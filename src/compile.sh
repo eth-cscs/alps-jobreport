@@ -1,0 +1,1 @@
+g++ main.cpp -I../include -std=c++17 -o jobreport -ldcgm #-lstdc++fs
