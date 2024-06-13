@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include "status.hpp"
 #include "argh.hpp"
 
 // This function looks for the '--' delimiter and extracts
@@ -40,15 +41,6 @@ std::string extract_non_arguments(int &argc, char **argv) {
     return non_arguments;
 }
 
-// Define struct for successful parsing or error message
-enum ParserStatus {
-    Success = 0,
-    Help = 1,
-    MissingValue = 2,
-    InvalidValue = 3,
-    MissingNonArguments = 4
-};
-
 /*
 jobreport: Main command. Usage: jobreport -arg=val -- ./workload -arg=val
     -v, --version: Print version
@@ -71,7 +63,7 @@ public:
         });        
     }
 
-    ParserStatus parse(int argc, char** argv) {
+    Status parse(int argc, char** argv) {
         // Extract non-arguments
         non_arguments = extract_non_arguments(argc, argv);
 
@@ -80,7 +72,7 @@ public:
 
         // Check if -h or --help is present
         if(parser[{"-?", "-h", "--help"}]) {
-            return ParserStatus::Help;
+            return Status::Help;
         }
 
         // Read optional arguments
@@ -93,10 +85,10 @@ public:
 
         // This is required for the main command
         if(non_arguments.empty() && !version) {
-            return ParserStatus::MissingNonArguments;
+            return Status::MissingNonArguments;
         }
 
-        return ParserStatus::Success;
+        return Status::Success;
     }
 
     void help() {
@@ -162,18 +154,18 @@ public:
         });
     }
 
-    ParserStatus parse(int argc, char** argv) {
+    Status parse(int argc, char** argv) {
         parser.parse(argc, argv);
 
         // Check if -h or --help is present
         if(parser[{"-?", "-h", "--help"}]) {
-            return ParserStatus::Help;
+            return Status::Help;
         }
 
         parser({"-u", "--sampling_time"}, sampling_time) >> sampling_time;
         parser({"-t", "--max_time"}, max_time) >> max_time;
 
-        return ParserStatus::Success;
+        return Status::Success;
     }
 
     void help() {
@@ -216,19 +208,19 @@ public:
         });
     }
 
-    ParserStatus parse(int argc, char** argv) {
+    Status parse(int argc, char** argv) {
         parser.parse(argc, argv);
 
         // Check if -h or --help is present
         if(parser[{"-?", "-h", "--help"}]) {
-            return ParserStatus::Help;
+            return Status::Help;
         }
 
         parser({"-o", "--output"}, output) >> output;
         parser({"--split-output"}, split_output) >> split_output;
         parser({"--lock-file-dir"}, lock_file_dir) >> lock_file_dir;
 
-        return ParserStatus::Success;
+        return Status::Success;
     }
 
     void help() {
@@ -271,17 +263,17 @@ public:
         });
     }
 
-    ParserStatus parse(int argc, char** argv) {
+    Status parse(int argc, char** argv) {
         parser.parse(argc, argv);
 
         // Check if -h or --help is present
         if(parser[{"-?", "-h", "--help"}]) {
-            return ParserStatus::Help;
+            return Status::Help;
         }
 
         parser({"-i", "--input"}, input) >> input;
 
-        return ParserStatus::Success;
+        return Status::Success;
     }
 
     void help() {
@@ -314,16 +306,16 @@ class HookCmdArgs {
 public:
     HookCmdArgs() = default;
 
-    ParserStatus parse(int argc, char** argv) {
+    Status parse(int argc, char** argv) {
         // Parse the arguments
         parser.parse(argc, argv);
 
         // Check if -h or --help is present
         if(parser[{"-?", "-h", "--help"}]) {
-            return ParserStatus::Help;
+            return Status::Help;
         }
 
-        return ParserStatus::Success;
+        return Status::Success;
     }
 
     void help() {

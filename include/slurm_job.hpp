@@ -17,115 +17,96 @@ class SlurmJob
 {
 public:
     SlurmJob() = default;
+    Status read_slurm_env();
 
-    template <typename T>
-    T get(const std::string &key) const;
+    // Public variables
+    std::string job_id = "";
+    std::string proc_id = "";
+    unsigned int n_tasks_per_node = 0;
+    unsigned int gpus_per_task = 0;
+    unsigned int n_nodes = 0;
+    unsigned int n_procs = 0;
+    unsigned int n_gpus = 0;
+    bool root = false;
 
-    void read_slurm_env();
-
-    // template <typename T>
-    // T get(const char* key) const {
-    //     return get(std::string(key));
-    // };
-
+    // Debugging
+    void print_vars();
+    
 private:
-    // Variables
-    std::unordered_map<std::string, std::string> vars;
-    std::string read_env_var(const std::string &var);
+    template <typename T>
+    Status read_env_var(T& rax, const std::string& var);
+    
 };
 
 template <typename T>
-T SlurmJob::get(const std::string &key) const
-{
-    // Look for key in vars
-    auto it = vars.find(key);
-    if (it == vars.end())
-    {
-        raise_error("Error: environment variable " + key + " not found in SlurmJob object.");
-    }
-
-    // Check if the value can be converted to the desired type
-    std::istringstream iss(it->second);
-    T value;
-    char c;
-    if (!(iss >> value) || iss.get(c))
-    {
-        raise_error("Error: environment variable " + key + " cannot be converted to the desired type.");
-    }
-
-    return value;
-}
-
-// Specialized type for string
-template <>
-std::string SlurmJob::get<std::string>(const std::string &key) const
-{
-    // Look for key in vars
-    auto it = vars.find(key);
-    if (it == vars.end())
-    {
-        raise_error("Error: environment variable " + key + " not found in SlurmJob object.");
-    }
-
-    return it->second;
-}
-
-std::string SlurmJob::read_env_var(const std::string &var)
+Status SlurmJob::read_env_var(T& rax, const std::string& var)
 {
     const char *env = std::getenv(var.c_str());
+    
     if (env == nullptr)
     {
-        raise_error("Error: unable to read environment variable " + var);
+        return Status::Error;
     }
+
     // Convert the environment variable to a string
     std::string value = env;
-    return value;
+    
+    // Convert the string to the desired type
+    T return_value;
+    std::istringstream(value) >> rax;
+    
+    return Status::Success;
 }
 
-void SlurmJob::read_slurm_env()
+Status SlurmJob::read_slurm_env()
 {
     // Read all the slurm environment variables
-    // and store them in the class
-    // SLURM_JOB_ID
-    try
-    {
-        vars["job_id"] = read_env_var("SLURM_JOB_ID");
-    }
-    catch (const std::runtime_error &e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
+    if(read_env_var(job_id, "SLURM_JOB_ID") != Status::Success)
+        raise_error("SLURM_JOB_ID not found");
+    
+    if(read_env_var(proc_id, "SLURM_PROCID") != Status::Success)
+        raise_error("SLURM_PROCID not found");
+    
+    if(read_env_var(n_tasks_per_node, "SLURM_TASKS_PER_NODE") != Status::Success)
+        std::cout << "Warning: unable to read SLURM_TASKS_PER_NODE" << std::endl
+                  << "Consider passing --ntasks-per-node <x> in your job script." << std::endl;
 
-    // SLURM_PROCID
-    try
-    {
-        vars["proc_id"] = read_env_var("SLURM_PROCID");
-    }
-    catch (const std::runtime_error &e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
+    // if(read_env_var(gpus_per_task, "SLURM_GPUS_PER_TASK") != Status::Success)
+    //     std::cout << "Warning: unable to read SLURM_GPUS_PER_TASK" << std::endl
+    //               << "Consider passing --gpus-per-task <x> in your job script." << std::endl;
 
-    // SLURM_NTASKS_PER_NODE
-    try
-    {
-        vars["n_tasks_per_node"] = read_env_var("SLURM_NTASKS_PER_NODE");
-    }
-    catch (const std::runtime_error &e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
+    // Backup values used to determine the number of nodes and processors
+    // if SLURM_TASKS_PER_NODE is not set
+    read_env_var(n_nodes, "SLURM_NNODES");
+    read_env_var(n_procs, "SLURM_NPROCS");
+    read_env_var(n_gpus, "SLURM_NGPUS");
 
-    // SLURM_GPUS_PER_TASK
-    try
+    // Determine the number of processes per node
+    if(n_tasks_per_node == 0)
     {
-        vars["gpus_per_task"] = read_env_var("SLURM_GPUS_PER_TASK");
-    }
-    catch (const std::runtime_error &e)
-    {
-        // Fall back to -1 if the environment variable is not set
-        vars["gpus_per_task"] = "";
-    }
+        if(n_procs != 0 && n_nodes != 0) {
+            n_tasks_per_node = n_procs / n_nodes;
+        } else {
+            raise_error("Unable to determine the number of tasks running on each node.");
+        }
+    } 
+        
+    // Determine if the current process is the root process on its node
+    root = (std::stoul(proc_id) % n_tasks_per_node == 0);
+
+    return Status::Success;
+}
+
+void SlurmJob::print_vars()
+{
+    std::cout << "SLURM_JOB_ID: " << job_id << std::endl;
+    std::cout << "SLURM_PROCID: " << proc_id << std::endl;
+    std::cout << "SLURM_NTASKS_PER_NODE: " << n_tasks_per_node << std::endl;
+    std::cout << "SLURM_GPUS_PER_TASK: " << gpus_per_task << std::endl;
+    std::cout << "SLURM_NNODES: " << n_nodes << std::endl;
+    std::cout << "SLURM_NPROCS: " << n_procs << std::endl;
+    std::cout << "SLURM_NGPUS: " << n_gpus << std::endl;
+    std::cout << "Root process: " << root << std::endl;
 }
 
 #endif // SLURM_HPP
