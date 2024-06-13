@@ -3,58 +3,75 @@
 #include <string>
 #include <memory>
 
-#include "argparse.hpp" // Argument parser library
-#include "args.hpp"     // Actual argument definitions
+#include "args.hpp"     // Argument parsers
 #include "jobreport.hpp"
 
-void jobreport_start(const start_command &args)
+// Start subcommand
+void start_cmd(const StartCmdArgs &args)
 {
-    JobReport jr;
-    jr.start(
-        args.output,
+    JobReport jr(
+        ".",                // Dummy output path
         args.sampling_time,
-        args.max_time,
-        args.split_output,
-        args.lock_file
+        args.max_time
     );
+    jr.start();
+}
 
-        const std::string &path = "",
-        const int sampling_time = 10,
-        const std::string &time_string = "12:00:00",
-        const bool split_output = false
+// Stop subcommand
+void stop_cmd(const StopCmdArgs &args)
+{
+    JobReport jr(
+        args.output,
+        0,                  // Dummy sampling time
+        "0:00:00",          // Dummy max time
+        args.split_output,
+        args.lock_file_dir
+    );
+    jr.stop();
 }
 
 int main(int argc, char **argv)
 {
-    // Process non-arguments if they exist first
-    // This is necessary as we expect the '--' delimiter to be the last argument
-    // before non-arguments such as the profiled command
-    // Example: ./jobreport -arg1=1 -- ./my_workload -arg1=2 will be processed as:
-    // argc = 2, argv = {"./jobreport", "-arg1=1"}, non_arguments = "./my_workload -arg1=2"
-    std::string non_arguments = extract_non_arguments(argc, argv);
-
-    // Parse arguments
-    std::unique_ptr<main_command> args = nullptr;
-
-    try
+    // Extract subcommand
+    std::string cmd = "";
+    if (argc >= 2)
     {
-        args = std::make_unique<main_command>(argparse::parse<main_command>(argc, argv)); // Throws on error
+        cmd = argv[1];
     }
-    catch (const std::runtime_error &e)
-    {
-        std::cerr << e.what() << std::endl;
-        main_command tmp;
-        tmp.help(); // Print help message and exit
-        return 1;
+    
+    if(cmd == "start") {
+        StartCmdArgs start_args;
+        if(start_args.parse(argc, argv) != Status::Success) {
+            start_args.help();
+            return 1;
+        }
+        start_cmd(start_args);
+    } else if (cmd == "stop") {
+        StopCmdArgs stop_args;
+        if(stop_args.parse(argc, argv) != Status::Success) {
+            stop_args.help();
+            return 1;
+        }
+        stop_cmd(stop_args);
+    } else if (cmd == "export"){
+        ExportCmdArgs export_args;
+        if(export_args.parse(argc, argv) != Status::Success) {
+            export_args.help();
+            return 1;
+        }
+    } else if (cmd == "hook") {
+        HookCmdArgs hook_args;
+        if(hook_args.parse(argc, argv) != Status::Success) {
+            hook_args.help();
+            return 1;
+        }
+    } else {
+        MainCmdArgs main_args;
+        if(main_args.parse(argc, argv) != Status::Success) {
+            main_args.help();
+            return 1;
+        }
     }
-
-    if (args->version)
-    {
-        std::cout << "Jobreport version 1.0" << std::endl;
-        std::cout << "Written by Marcel :)" << std::endl;
-        return 0;
-    }
-
-    args->help();
+    
     return 0;
 }
