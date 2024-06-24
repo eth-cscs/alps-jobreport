@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include "status.hpp"
-#include "argh.hpp"
+#include "third_party/argh/argh.hpp"
 
 // This function looks for the '--' delimiter and extracts
 // the following string as a non-argument
@@ -65,7 +65,7 @@ public:
 
     Status parse(int argc, char** argv) {
         // Extract non-arguments
-        non_arguments = extract_non_arguments(argc, argv);
+        cmd = extract_non_arguments(argc, argv);
 
         // Parse the arguments
         parser.parse(argc, argv);
@@ -84,7 +84,7 @@ public:
         parser({"--lock-file-dir"}, lock_file_dir) >> lock_file_dir;
 
         // This is required for the main command
-        if(non_arguments.empty() && !version) {
+        if(cmd.empty() && !version) {
             return Status::MissingNonArguments;
         }
 
@@ -124,7 +124,7 @@ public:
         std::cout << "max_time: " << max_time << std::endl;
         std::cout << "split_output: " << split_output << std::endl;
         std::cout << "lock_file_dir: " << lock_file_dir << std::endl;
-        std::cout << "non_arguments: " << non_arguments << std::endl;
+        std::cout << "cmd: " << cmd << std::endl;
     }
 
     // Public variables used to store the parsed arguments with default values
@@ -134,7 +134,7 @@ public:
     std::string max_time = "12:00:00";    // -t, --max_time
     bool split_output = false;            // --split-output
     std::string lock_file_dir = "/tmp";   // --lock-file-dir
-    std::string non_arguments = "";       // Non-arguments to run as a workload command
+    std::string cmd = "";       // Non-arguments to run as a workload command
 
 private:
     argh::parser parser;

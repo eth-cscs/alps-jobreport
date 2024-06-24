@@ -4,34 +4,33 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <filesystem>
 
 #include "dataframe.hpp"
-#include "array.hpp"
 #include "filelock.hpp"
 #include "utils.hpp"
 
-class StatsIO
+class FileIO
 {
 public:
-    StatsIO(bool single_file_output = false, const std::string &lock_file = "")
-        : single_file_output(single_file_output), lock_file(lock_file), lock(lock_file)
-    {
+    FileIO(bool single_file_output = false, const std::string &lock_file = "") 
+    : single_file_output(single_file_output), lock(lock_file){
         if (single_file_output && lock_file.empty())
         {
-            raise_error("Lock file must be provided when single_file_output is set to true");
+            raise_error("Lock file path cannot be empty when single_file_output is true.");
         }
     };
 
-    void write(const std::string &filename, const DataFrame &df);
+    void write(const std::string &filename, DataFrame &df);
     void read(const std::string &filename, DataFrame &df);
 
 private:
-    bool single_file_output;
     const std::string lock_file;
+    bool single_file_output;
     FileLock lock;
 };
 
-void StatsIO::write(const std::string &filename, const DataFrame &df)
+void FileIO::write(const std::string &filename, DataFrame &df)
 {
     if (single_file_output)
     {
@@ -47,12 +46,12 @@ void StatsIO::write(const std::string &filename, const DataFrame &df)
         {
             lock.unlock();
         }
+
         raise_error("Failed to open file for writing: " + filename);
     }
 
     // All good, write the DataFrame to the file
-    out_file << df;
-
+    df.dump(out_file);
     out_file.close();
 
     if (single_file_output)
@@ -61,7 +60,7 @@ void StatsIO::write(const std::string &filename, const DataFrame &df)
     }
 }
 
-void StatsIO::read(const std::string &filename, DataFrame &df)
+void FileIO::read(const std::string &filename, DataFrame &df)
 {
     std::ifstream in_file;
     in_file.open(filename, std::ios::binary);
@@ -72,7 +71,7 @@ void StatsIO::read(const std::string &filename, DataFrame &df)
     }
 
     // All good, read the DataFrame from the file
-    in_file >> df;
+    df.load(in_file);
 
     in_file.close();
 }

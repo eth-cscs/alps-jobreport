@@ -4,12 +4,14 @@
 #include <string>
 #include <iostream>
 #include <cstdlib>
+#include <vector>
+#include <sstream>
 
 // Debugging macro
 #ifdef JOBREPORT_DEBUG
-    #define DEBUG_LOG(x) std::cerr << "DEBUG: " << x << std::endl;
+    #define LOG(x) std::cerr << "DEBUG LOG: " << x << std::endl;
 #else
-    #define DEBUG_LOG(x)
+    #define LOG(x)
 #endif
 
 
@@ -20,7 +22,7 @@ void raise_error(const std::string &msg)
 }
 
 // Function used to parse the time string format DD-HH:MM:SS to seconds
-unsigned int parse_time(const std::string &time_str)
+int parse_time(const std::string &time_str)
 {
     int days = 0, hours = 0, minutes = 0, seconds = 0;
     std::vector<int> time_components;

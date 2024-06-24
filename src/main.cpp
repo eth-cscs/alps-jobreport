@@ -5,6 +5,8 @@
 
 #include "args.hpp"     // Argument parsers
 #include "jobreport.hpp"
+#include "dataframe.hpp"
+#include "dataframe_io.hpp"
 
 // Start subcommand
 void start_cmd(const StartCmdArgs &args)
@@ -28,6 +30,18 @@ void stop_cmd(const StopCmdArgs &args)
         args.lock_file_dir
     );
     jr.stop();
+}
+
+void main_cmd(const MainCmdArgs &args)
+{
+    JobReport jr(
+        args.output,
+        args.sampling_time,
+        args.max_time,
+        args.split_output,
+        args.lock_file_dir
+    );
+    jr.run(args.cmd);
 }
 
 int main(int argc, char **argv)
@@ -71,6 +85,7 @@ int main(int argc, char **argv)
             main_args.help();
             return 1;
         }
+        main_cmd(main_args);
     }
     
     return 0;

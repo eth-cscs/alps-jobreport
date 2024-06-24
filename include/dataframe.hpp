@@ -1,184 +1,254 @@
 #ifndef JOBREPORT_DATAFRAME_HPP
 #define JOBREPORT_DATAFRAME_HPP
 
+#define ALIGN_WIDTH 40
+#define ALIGN_VALUE 10
+
 #include <vector>
-#include <unordered_map>
-#include <string>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <numeric>
+#include <iomanip>
 
-#include "array.hpp"
-#include "utils.hpp"
+#include "dcgm_structs.h"
+#include "column.hpp"
+
+struct DataFrameAvg
+{
+
+    long long energyConsumed;
+    double powerUsageMin;
+    double powerUsageMax;
+    double powerUsageAvg;
+    long long pcieRxBandwidthMin;
+    long long pcieRxBandwidthMax;
+    long long pcieRxBandwidthAvg;
+    long long pcieTxBandwidthMin;
+    long long pcieTxBandwidthMax;
+    long long pcieTxBandwidthAvg;
+    long long pcieReplays;
+    long long startTime;
+    long long endTime;
+    int smUtilizationMin;
+    int smUtilizationMax;
+    int smUtilizationAvg;
+    int memoryUtilizationMin;
+    int memoryUtilizationMax;
+    int memoryUtilizationAvg;
+
+    DataFrameAvg() = default;
+};
+
 
 class DataFrame
 {
 public:
+    // Constructors
     DataFrame() = default;
+    DataFrame(const dcgmJobInfo_t &jobInfo);
 
-    Array &operator[](const std::string &key);
-    const Array &operator[](const std::string &key) const;
-    DataFrame DataFrame::operator[](const std::vector<std::string> &selection) const;
+    // Columns
+    DFColumn<unsigned int> gpuId;
+    DFColumn<long long> energyConsumed;
+    DFColumn<double> powerUsageMin;
+    DFColumn<double> powerUsageMax;
+    DFColumn<double> powerUsageAvg;
+    DFColumn<long long> pcieRxBandwidthMin;
+    DFColumn<long long> pcieRxBandwidthMax;
+    DFColumn<long long> pcieRxBandwidthAvg;
+    DFColumn<long long> pcieTxBandwidthMin;
+    DFColumn<long long> pcieTxBandwidthMax;
+    DFColumn<long long> pcieTxBandwidthAvg;
+    DFColumn<long long> pcieReplays;
+    DFColumn<long long> startTime;
+    DFColumn<long long> endTime;
+    DFColumn<int> smUtilizationMin;
+    DFColumn<int> smUtilizationMax;
+    DFColumn<int> smUtilizationAvg;
+    DFColumn<int> memoryUtilizationMin;
+    DFColumn<int> memoryUtilizationMax;
+    DFColumn<int> memoryUtilizationAvg;
 
-    std::vector<std::string> cols() const;
+    // Input/Output functions
+    void dump(std::ofstream &os);
+    void load(std::ifstream &is);
 
-    DataFrame mean(const std::vector<std::string> &selection = {}) const;
-    DataFrame std(const std::vector<std::string> &selection = {}) const;
-    DataFrame min(const std::vector<std::string> &selection = {}) const;
-    DataFrame max(const std::vector<std::string> &selection = {}) const;
+    // Data manipulation functions
+    void sort_by_gpu_id();
+    DataFrameAvg average();
 
-    friend std::ofstream &operator<<(std::ofstream &os, const DataFrame &df);
-    friend std::ifstream &operator>>(std::ifstream &is, DataFrame &df);
-
-    friend std::ostream &operator<<(std::ostream &os, const DataFrame &df);
-
-private:
-    std::unordered_map<std::string, Array> data;
+    // Resize the DataFrame
+    void resize(unsigned int n);
 };
 
-// Operator definitions
-Array &DataFrame::operator[](const std::string &key)
+DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo)
 {
-    return data[key];
+    unsigned int n = jobInfo.numGpus;
+    resize(n); // Resize all columns to have n elements
+
+    for (unsigned int id = 0; id < n; ++id)
+    {
+        gpuId.push_back(id);
+        energyConsumed.push_back(jobInfo.gpus[id].energyConsumed);
+        powerUsageMin.push_back(jobInfo.gpus[id].powerUsage.minValue);
+        powerUsageMax.push_back(jobInfo.gpus[id].powerUsage.maxValue);
+        powerUsageAvg.push_back(jobInfo.gpus[id].powerUsage.average);
+        pcieRxBandwidthMin.push_back(jobInfo.gpus[id].pcieRxBandwidth.minValue);
+        pcieRxBandwidthMax.push_back(jobInfo.gpus[id].pcieRxBandwidth.maxValue);
+        pcieRxBandwidthAvg.push_back(jobInfo.gpus[id].pcieRxBandwidth.average);
+        pcieTxBandwidthMin.push_back(jobInfo.gpus[id].pcieTxBandwidth.minValue);
+        pcieTxBandwidthMax.push_back(jobInfo.gpus[id].pcieTxBandwidth.maxValue);
+        pcieTxBandwidthAvg.push_back(jobInfo.gpus[id].pcieTxBandwidth.average);
+        pcieReplays.push_back(jobInfo.gpus[id].pcieReplays);
+        startTime.push_back(jobInfo.gpus[id].startTime);
+        endTime.push_back(jobInfo.gpus[id].endTime);
+        smUtilizationMin.push_back(jobInfo.gpus[id].smUtilization.minValue);
+        smUtilizationMax.push_back(jobInfo.gpus[id].smUtilization.maxValue);
+        smUtilizationAvg.push_back(jobInfo.gpus[id].smUtilization.average);
+        memoryUtilizationMin.push_back(jobInfo.gpus[id].memoryUtilization.minValue);
+        memoryUtilizationMax.push_back(jobInfo.gpus[id].memoryUtilization.maxValue);
+        memoryUtilizationAvg.push_back(jobInfo.gpus[id].memoryUtilization.average);
+    }
 }
 
-const Array &DataFrame::operator[](const std::string &key) const
+void DataFrame::resize(unsigned int n)
 {
-    auto it = data.find(key);
-    if (it != data.end())
-    {
-        return it->second;
-    }
-    raise_error("Key not found in DataFrame");
+    gpuId.resize(n);
+    energyConsumed.resize(n);
+    powerUsageMin.resize(n);
+    powerUsageMax.resize(n);
+    powerUsageAvg.resize(n);
+    pcieRxBandwidthMin.resize(n);
+    pcieRxBandwidthMax.resize(n);
+    pcieRxBandwidthAvg.resize(n);
+    pcieTxBandwidthMin.resize(n);
+    pcieTxBandwidthMax.resize(n);
+    pcieTxBandwidthAvg.resize(n);
+    pcieReplays.resize(n);
+    startTime.resize(n);
+    endTime.resize(n);
+    smUtilizationMin.resize(n);
+    smUtilizationMax.resize(n);
+    smUtilizationAvg.resize(n);
+    memoryUtilizationMin.resize(n);
+    memoryUtilizationMax.resize(n);
+    memoryUtilizationAvg.resize(n);
 }
 
-DataFrame DataFrame::operator[](const std::vector<std::string> &selection) const
+void DataFrame::sort_by_gpu_id()
 {
-    if (selection.empty())
-    {
-        raise_error("Empty selection");
-    }
-    
-    DataFrame result;
-    for (const auto &col : selection)
-    {
-        result.data[col] = data.at(col);
-    }
-    return result;
+    // Create a vector of indices
+    std::vector<size_t> indices(gpuId.size());
+    std::iota(indices.begin(), indices.end(), 0); // Fill with 0, 1, ..., n-1
+
+    // Sort indices based on the values in the gpuId DFColumn
+    std::sort(indices.begin(), indices.end(),
+              [this](size_t i1, size_t i2)
+              { return gpuId[i1] < gpuId[i2]; });
+
+    // Apply the sorted order to each DFColumn
+    gpuId.permute(indices);
+    energyConsumed.permute(indices);
+    powerUsageMin.permute(indices);
+    powerUsageMax.permute(indices);
+    powerUsageAvg.permute(indices);
+    pcieRxBandwidthMin.permute(indices);
+    pcieRxBandwidthMax.permute(indices);
+    pcieRxBandwidthAvg.permute(indices);
+    pcieTxBandwidthMin.permute(indices);
+    pcieTxBandwidthMax.permute(indices);
+    pcieTxBandwidthAvg.permute(indices);
+    pcieReplays.permute(indices);
+    startTime.permute(indices);
+    endTime.permute(indices);
+    smUtilizationMin.permute(indices);
+    smUtilizationMax.permute(indices);
+    smUtilizationAvg.permute(indices);
+    memoryUtilizationMin.permute(indices);
+    memoryUtilizationMax.permute(indices);
+    memoryUtilizationAvg.permute(indices);
 }
 
-std::vector<std::string> DataFrame::cols() const
+DataFrameAvg DataFrame::average()
 {
-    std::vector<std::string> columns;
-    for (const auto &pair : data)
-    {
-        columns.push_back(pair.first);
-    }
-    return columns;
+    DataFrameAvg avg;
+    avg.energyConsumed = energyConsumed.average();
+    avg.powerUsageMin = powerUsageMin.average();
+    avg.powerUsageMax = powerUsageMax.average();
+    avg.powerUsageAvg = powerUsageAvg.average();
+    avg.pcieRxBandwidthMin = pcieRxBandwidthMin.average();
+    avg.pcieRxBandwidthMax = pcieRxBandwidthMax.average();
+    avg.pcieRxBandwidthAvg = pcieRxBandwidthAvg.average();
+    avg.pcieTxBandwidthMin = pcieTxBandwidthMin.average();
+    avg.pcieTxBandwidthMax = pcieTxBandwidthMax.average();
+    avg.pcieTxBandwidthAvg = pcieTxBandwidthAvg.average();
+    avg.pcieReplays = pcieReplays.average();
+    avg.startTime = startTime.average();
+    avg.endTime = endTime.average();
+    avg.smUtilizationMin = smUtilizationMin.average();
+    avg.smUtilizationMax = smUtilizationMax.average();
+    avg.smUtilizationAvg = smUtilizationAvg.average();
+    avg.memoryUtilizationMin = memoryUtilizationMin.average();
+    avg.memoryUtilizationMax = memoryUtilizationMax.average();
+    avg.memoryUtilizationAvg = memoryUtilizationAvg.average();
+    return avg;
 }
 
-// Method definitions
-DataFrame DataFrame::mean(const std::vector<std::string> &selection) const
+// Load the DataFrame from a file
+void DataFrame::dump(std::ofstream &os)
 {
-    DataFrame result;
-    const std::vector<std::string> columns = selection.empty() ? cols() : selection;
-    for (const auto &col : columns)
+    size_t numRows = gpuId.size();
+    for (size_t i = 0; i < numRows; ++i)
     {
-        Array meanArray(1);
-        meanArray.append(data.at(col).mean());
-        result.data[col] = meanArray;
+        gpuId.write(os, i);
+        energyConsumed.write(os, i);
+        powerUsageMin.write(os, i);
+        powerUsageMax.write(os, i);
+        powerUsageAvg.write(os, i);
+        pcieRxBandwidthMin.write(os, i);
+        pcieRxBandwidthMax.write(os, i);
+        pcieRxBandwidthAvg.write(os, i);
+        pcieTxBandwidthMin.write(os, i);
+        pcieTxBandwidthMax.write(os, i);
+        pcieTxBandwidthAvg.write(os, i);
+        pcieReplays.write(os, i);
+        startTime.write(os, i);
+        endTime.write(os, i);
+        smUtilizationMin.write(os, i);
+        smUtilizationMax.write(os, i);
+        smUtilizationAvg.write(os, i);
+        memoryUtilizationMin.write(os, i);
+        memoryUtilizationMax.write(os, i);
+        memoryUtilizationAvg.write(os, i);
     }
-    return result;
 }
 
-DataFrame DataFrame::std(const std::vector<std::string> &selection) const
+void DataFrame::load(std::ifstream &is)
 {
-    DataFrame result;
-    const std::vector<std::string> columns = selection.empty() ? cols() : selection;
-    for (const auto &col : columns)
+    while (!is.eof())
     {
-        Array stdArray(1);
-        stdArray.append(data.at(col).std());
-        result.data[col] = stdArray;
+        gpuId.read(is);
+        energyConsumed.read(is);
+        powerUsageMin.read(is);
+        powerUsageMax.read(is);
+        powerUsageAvg.read(is);
+        pcieRxBandwidthMin.read(is);
+        pcieRxBandwidthMax.read(is);
+        pcieRxBandwidthAvg.read(is);
+        pcieTxBandwidthMin.read(is);
+        pcieTxBandwidthMax.read(is);
+        pcieTxBandwidthAvg.read(is);
+        pcieReplays.read(is);
+        startTime.read(is);
+        endTime.read(is);
+        smUtilizationMin.read(is);
+        smUtilizationMax.read(is);
+        smUtilizationAvg.read(is);
+        memoryUtilizationMin.read(is);
+        memoryUtilizationMax.read(is);
+        memoryUtilizationAvg.read(is);
     }
-    return result;
-}
-
-DataFrame DataFrame::min(const std::vector<std::string> &selection) const
-{
-    DataFrame result;
-    const std::vector<std::string> columns = selection.empty() ? cols() : selection;
-    for (const auto &col : columns)
-    {
-        Array minArray(1);
-        minArray.append(data.at(col).min());
-        result.data[col] = minArray;
-    }
-    return result;
-}
-
-DataFrame DataFrame::max(const std::vector<std::string> &selection) const
-{
-    DataFrame result;
-    const std::vector<std::string> columns = selection.empty() ? cols() : selection;
-    for (const auto &col : columns)
-    {
-        Array maxArray(1);
-        maxArray.append(data.at(col).max());
-        result.data[col] = maxArray;
-    }
-    return result;
-}
-
-// Binary serialization operator for DataFrame
-std::ofstream &operator<<(std::ofstream &os, const DataFrame &df)
-{
-    // Write number of columns
-    size_t numCols = df.data.size();
-    os.write(reinterpret_cast<const char *>(&numCols), sizeof(numCols));
-
-    // Write each column name and corresponding Array
-    for (const auto &pair : df.data)
-    {
-        size_t keySize = pair.first.size();
-        os.write(reinterpret_cast<const char *>(&keySize), sizeof(keySize));
-        os.write(pair.first.c_str(), keySize);
-        os << pair.second; // Using Array's operator<< for std::ofstream
-    }
-    return os;
-}
-
-// Binary deserialization operator for DataFrame
-std::ifstream &operator>>(std::ifstream &is, DataFrame &df)
-{
-    // Read number of columns
-    size_t numCols;
-    is.read(reinterpret_cast<char *>(&numCols), sizeof(numCols));
-
-    // Read each column name and corresponding Array
-    for (size_t i = 0; i < numCols; ++i)
-    {
-        size_t keySize;
-        is.read(reinterpret_cast<char *>(&keySize), sizeof(keySize));
-
-        std::string key(keySize, '\0');
-        is.read(&key[0], keySize);
-
-        Array arr;
-        is >> arr; // Using Array's operator>> for std::ifstream
-
-        df.data[key] = arr;
-    }
-    return is;
-}
-
-// Text output operator for DataFrame
-std::ostream &operator<<(std::ostream &os, const DataFrame &df)
-{
-    for (const auto &pair : df.data)
-    {
-        os << pair.first << ": " << pair.second << std::endl; // Using Array's operator<< for std::ostream
-    }
-    return os;
 }
 
 #endif // JOBREPORT_DATAFRAME_HPP

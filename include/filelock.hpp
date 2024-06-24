@@ -18,6 +18,11 @@ public:
 
     void lock()
     {
+        if (filename.empty())
+        {
+            raise_error("Filename cannot be empty");
+        }
+        
         fd = open(filename.c_str(), O_RDWR | O_CREAT, 0666);
         if (fd == -1)
         {
