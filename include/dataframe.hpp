@@ -13,10 +13,11 @@
 
 #include "dcgm_structs.h"
 #include "column.hpp"
+#include "slurm_job.hpp"
 
 struct DataFrameAvg
 {
-
+    unsigned int n_gpus;
     long long energyConsumed;
     double powerUsageMin;
     double powerUsageMax;
@@ -46,7 +47,7 @@ class DataFrame
 public:
     // Constructors
     DataFrame() = default;
-    DataFrame(const dcgmJobInfo_t &jobInfo);
+    DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob& job);
 
     // Columns
     DFColumn<unsigned int> gpuId;
@@ -78,18 +79,19 @@ public:
     void sort_by_gpu_id();
     DataFrameAvg average();
 
-    // Resize the DataFrame
-    void resize(unsigned int n);
+    // Reserve memory for the DataFrame
+    void reserve(unsigned int n);
 };
 
-DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo)
+DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob& job)
 {
     unsigned int n = jobInfo.numGpus;
-    resize(n); // Resize all columns to have n elements
+    reserve(n); // Reserve all columns to have n elements
 
+    unsigned int base_id = job.n_gpus > 0 ? std::stoi(job.proc_id) * job.n_gpus : std::stoi(job.proc_id) * job.n_tasks_per_node;
     for (unsigned int id = 0; id < n; ++id)
     {
-        gpuId.push_back(id);
+        gpuId.push_back(base_id + id);
         energyConsumed.push_back(jobInfo.gpus[id].energyConsumed);
         powerUsageMin.push_back(jobInfo.gpus[id].powerUsage.minValue);
         powerUsageMax.push_back(jobInfo.gpus[id].powerUsage.maxValue);
@@ -112,28 +114,28 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo)
     }
 }
 
-void DataFrame::resize(unsigned int n)
+void DataFrame::reserve(unsigned int n)
 {
-    gpuId.resize(n);
-    energyConsumed.resize(n);
-    powerUsageMin.resize(n);
-    powerUsageMax.resize(n);
-    powerUsageAvg.resize(n);
-    pcieRxBandwidthMin.resize(n);
-    pcieRxBandwidthMax.resize(n);
-    pcieRxBandwidthAvg.resize(n);
-    pcieTxBandwidthMin.resize(n);
-    pcieTxBandwidthMax.resize(n);
-    pcieTxBandwidthAvg.resize(n);
-    pcieReplays.resize(n);
-    startTime.resize(n);
-    endTime.resize(n);
-    smUtilizationMin.resize(n);
-    smUtilizationMax.resize(n);
-    smUtilizationAvg.resize(n);
-    memoryUtilizationMin.resize(n);
-    memoryUtilizationMax.resize(n);
-    memoryUtilizationAvg.resize(n);
+    gpuId.reserve(n);
+    energyConsumed.reserve(n);
+    powerUsageMin.reserve(n);
+    powerUsageMax.reserve(n);
+    powerUsageAvg.reserve(n);
+    pcieRxBandwidthMin.reserve(n);
+    pcieRxBandwidthMax.reserve(n);
+    pcieRxBandwidthAvg.reserve(n);
+    pcieTxBandwidthMin.reserve(n);
+    pcieTxBandwidthMax.reserve(n);
+    pcieTxBandwidthAvg.reserve(n);
+    pcieReplays.reserve(n);
+    startTime.reserve(n);
+    endTime.reserve(n);
+    smUtilizationMin.reserve(n);
+    smUtilizationMax.reserve(n);
+    smUtilizationAvg.reserve(n);
+    memoryUtilizationMin.reserve(n);
+    memoryUtilizationMax.reserve(n);
+    memoryUtilizationAvg.reserve(n);
 }
 
 void DataFrame::sort_by_gpu_id()
@@ -173,6 +175,7 @@ void DataFrame::sort_by_gpu_id()
 DataFrameAvg DataFrame::average()
 {
     DataFrameAvg avg;
+    avg.n_gpus = gpuId.size();
     avg.energyConsumed = energyConsumed.average();
     avg.powerUsageMin = powerUsageMin.average();
     avg.powerUsageMax = powerUsageMax.average();
@@ -195,59 +198,136 @@ DataFrameAvg DataFrame::average()
     return avg;
 }
 
-// Load the DataFrame from a file
 void DataFrame::dump(std::ofstream &os)
 {
     size_t numRows = gpuId.size();
+
+    // Write the header
+    os << "gpuId,energyConsumed,powerUsageMin,powerUsageMax,powerUsageAvg,"
+       << "pcieRxBandwidthMin,pcieRxBandwidthMax,pcieRxBandwidthAvg,"
+       << "pcieTxBandwidthMin,pcieTxBandwidthMax,pcieTxBandwidthAvg,"
+       << "pcieReplays,startTime,endTime,"
+       << "smUtilizationMin,smUtilizationMax,smUtilizationAvg,"
+       << "memoryUtilizationMin,memoryUtilizationMax,memoryUtilizationAvg\n";
+
+    // Write the data
     for (size_t i = 0; i < numRows; ++i)
     {
-        gpuId.write(os, i);
-        energyConsumed.write(os, i);
-        powerUsageMin.write(os, i);
-        powerUsageMax.write(os, i);
-        powerUsageAvg.write(os, i);
-        pcieRxBandwidthMin.write(os, i);
-        pcieRxBandwidthMax.write(os, i);
-        pcieRxBandwidthAvg.write(os, i);
-        pcieTxBandwidthMin.write(os, i);
-        pcieTxBandwidthMax.write(os, i);
-        pcieTxBandwidthAvg.write(os, i);
-        pcieReplays.write(os, i);
-        startTime.write(os, i);
-        endTime.write(os, i);
-        smUtilizationMin.write(os, i);
-        smUtilizationMax.write(os, i);
-        smUtilizationAvg.write(os, i);
-        memoryUtilizationMin.write(os, i);
-        memoryUtilizationMax.write(os, i);
-        memoryUtilizationAvg.write(os, i);
+        os << gpuId[i] << ',' 
+           << energyConsumed[i] << ',' 
+           << powerUsageMin[i] << ',' 
+           << powerUsageMax[i] << ',' 
+           << powerUsageAvg[i] << ','
+           << pcieRxBandwidthMin[i] << ',' 
+           << pcieRxBandwidthMax[i] << ',' 
+           << pcieRxBandwidthAvg[i] << ','
+           << pcieTxBandwidthMin[i] << ',' 
+           << pcieTxBandwidthMax[i] << ',' 
+           << pcieTxBandwidthAvg[i] << ','
+           << pcieReplays[i] << ','
+           << startTime[i] << ',' 
+           << endTime[i] << ','
+           << smUtilizationMin[i] << ',' 
+           << smUtilizationMax[i] << ',' 
+           << smUtilizationAvg[i] << ','
+           << memoryUtilizationMin[i] << ',' 
+           << memoryUtilizationMax[i] << ',' 
+           << memoryUtilizationAvg[i] << '\n';
     }
 }
 
 void DataFrame::load(std::ifstream &is)
 {
-    while (!is.eof())
+    std::string line;
+    std::getline(is, line); // Skip header line
+
+    // Clear existing data
+    // gpuId.clear();
+    // energyConsumed.clear();
+    // powerUsageMin.clear();
+    // powerUsageMax.clear();
+    // powerUsageAvg.clear();
+    // pcieRxBandwidthMin.clear();
+    // pcieRxBandwidthMax.clear();
+    // pcieRxBandwidthAvg.clear();
+    // pcieTxBandwidthMin.clear();
+    // pcieTxBandwidthMax.clear();
+    // pcieTxBandwidthAvg.clear();
+    // pcieReplays.clear();
+    // startTime.clear();
+    // endTime.clear();
+    // smUtilizationMin.clear();
+    // smUtilizationMax.clear();
+    // smUtilizationAvg.clear();
+    // memoryUtilizationMin.clear();
+    // memoryUtilizationMax.clear();
+    // memoryUtilizationAvg.clear();
+
+    while (std::getline(is, line))
     {
-        gpuId.read(is);
-        energyConsumed.read(is);
-        powerUsageMin.read(is);
-        powerUsageMax.read(is);
-        powerUsageAvg.read(is);
-        pcieRxBandwidthMin.read(is);
-        pcieRxBandwidthMax.read(is);
-        pcieRxBandwidthAvg.read(is);
-        pcieTxBandwidthMin.read(is);
-        pcieTxBandwidthMax.read(is);
-        pcieTxBandwidthAvg.read(is);
-        pcieReplays.read(is);
-        startTime.read(is);
-        endTime.read(is);
-        smUtilizationMin.read(is);
-        smUtilizationMax.read(is);
-        smUtilizationAvg.read(is);
-        memoryUtilizationMin.read(is);
-        memoryUtilizationMax.read(is);
-        memoryUtilizationAvg.read(is);
+        std::stringstream ss(line);
+        std::string value;
+        
+        // Read each value into the respective column
+        std::getline(ss, value, ',');
+        gpuId.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        energyConsumed.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        powerUsageMin.push_back(std::stod(value));
+
+        std::getline(ss, value, ',');
+        powerUsageMax.push_back(std::stod(value));
+
+        std::getline(ss, value, ',');
+        powerUsageAvg.push_back(std::stod(value));
+
+        std::getline(ss, value, ',');
+        pcieRxBandwidthMin.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieRxBandwidthMax.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieRxBandwidthAvg.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieTxBandwidthMin.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieTxBandwidthMax.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieTxBandwidthAvg.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        pcieReplays.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        startTime.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        endTime.push_back(std::stoll(value));
+
+        std::getline(ss, value, ',');
+        smUtilizationMin.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        smUtilizationMax.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        smUtilizationAvg.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        memoryUtilizationMin.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        memoryUtilizationMax.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        memoryUtilizationAvg.push_back(std::stoi(value));
     }
 }
 

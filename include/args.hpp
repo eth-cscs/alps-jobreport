@@ -58,8 +58,7 @@ public:
         parser.add_params({
             "-o", "--output",
             "-u", "--sampling_time",
-            "-t", "--max_time",
-            "--lock-file-dir"
+            "-t", "--max_time"
         });        
     }
 
@@ -80,8 +79,6 @@ public:
         parser({"-o", "--output"}, output) >> output;
         parser({"-u", "--sampling_time"}, sampling_time) >> sampling_time;
         parser({"-t", "--max_time"}, max_time) >> max_time;
-        parser({"--split-output"}, split_output) >> split_output;
-        parser({"--lock-file-dir"}, lock_file_dir) >> lock_file_dir;
 
         // This is required for the main command
         if(cmd.empty() && !version) {
@@ -104,11 +101,9 @@ public:
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
             << "  -v, --version                  Show version information" << std::endl
-            << "  -o, --output <path>            Specify output directory (default: ./)" << std::endl
+            << "  -o, --output <path>            Specify output directory (default: ./report_<SLURM_JOB_ID>)" << std::endl
             << "  -u, --sampling_time <seconds>  Set the sampling time in seconds (default: 10)" << std::endl
             << "  -t, --max_time <time>          Set the maximum time (format: DD-HH:MM:SS, default: 12:00:00)" << std::endl
-            << "      --split-output             Split output into multiple files (default: false)" << std::endl
-            << "      --lock-file-dir <path>     Specify lock file directory (default: /tmp)" << std::endl
             << std::endl
             << "Arguments:" << std::endl
             << "  workload_command               The command to run as the workload" << std::endl
@@ -122,14 +117,12 @@ public:
         std::cout << "output: " << output << std::endl;
         std::cout << "sampling_time: " << sampling_time << std::endl;
         std::cout << "max_time: " << max_time << std::endl;
-        std::cout << "split_output: " << split_output << std::endl;
-        std::cout << "lock_file_dir: " << lock_file_dir << std::endl;
         std::cout << "cmd: " << cmd << std::endl;
     }
 
     // Public variables used to store the parsed arguments with default values
     bool version = false;                 // -v, --version
-    std::string output = "./";            // -o, --output
+    std::string output = "";            // -o, --output
     int sampling_time = 10;               // -u, --sampling_time
     std::string max_time = "12:00:00";    // -t, --max_time
     bool split_output = false;            // --split-output
@@ -203,8 +196,7 @@ class StopCmdArgs {
 public:
     StopCmdArgs() {
         parser.add_params({
-            "-o", "--output",
-            "--lock-file-dir"
+            "-o", "--output"
         });
     }
 
@@ -217,8 +209,6 @@ public:
         }
 
         parser({"-o", "--output"}, output) >> output;
-        parser({"--split-output"}, split_output) >> split_output;
-        parser({"--lock-file-dir"}, lock_file_dir) >> lock_file_dir;
 
         return Status::Success;
     }
@@ -229,9 +219,7 @@ public:
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -o, --output <path>            Specify output directory (default: ./)" << std::endl
-            << "      --split-output             Split output into multiple files (default: false)" << std::endl
-            << "      --lock-file-dir <path>     Specify lock file directory (default: /tmp)" << std::endl
+            << "  -o, --output <path>            Specify output directory (default: ./report_<SLURM_JOB_ID>)" << std::endl
             << std::endl
             << "Example:" << std::endl
             << "  jobreport stop -o ./output --split-output" << std::endl;
@@ -239,13 +227,9 @@ public:
 
     void print_params() {
         std::cout << "output: " << output << std::endl;
-        std::cout << "split_output: " << split_output << std::endl;
-        std::cout << "lock_file_dir: " << lock_file_dir << std::endl;
     }
 
-    std::string output = "./";            // -o, --output
-    bool split_output = false;            // --split-output
-    std::string lock_file_dir = "/tmp";   // --lock-file-dir
+    std::string output = "";            // -o, --output
 
 private:
     argh::parser parser;
@@ -273,6 +257,10 @@ public:
 
         parser({"-i", "--input"}, input) >> input;
 
+        if (input.empty()) {
+            return Status::MissingArgument;
+        }
+
         return Status::Success;
     }
 
@@ -282,7 +270,7 @@ public:
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -i, --input <path>             Specify input file or directory" << std::endl
+            << "  -i, --input <path>             Specify input directory" << std::endl
             << std::endl
             << "Example:" << std::endl
             << "  jobreport export -i ./input" << std::endl;

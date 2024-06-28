@@ -15,7 +15,6 @@
 #include "dcgm_structs.h"
 #include "slurm_job.hpp"
 #include "utils.hpp"
-#include "file_io.hpp"
 #include "dataframe.hpp"
 #include "dataframe_io.hpp"
 
@@ -25,9 +24,7 @@ public:
     JobReport(
         const std::string &path = "",
         int sampling_time = 10,
-        const std::string &time_string = "12:00:00",
-        bool split_output = false,
-        const std::string &lock_file_dir = "/tmp")
+        const std::string &time_string = "12:00:00")
         : sampling_time(sampling_time*1000000), split_output(split_output)
     {
         LOG("Initializing JobReport object." << std::endl
@@ -35,10 +32,9 @@ public:
             << "Sampling time: " << sampling_time << std::endl
             << "Time string: " << time_string << std::endl
             << "Split output: " << split_output << std::endl
-            << "Lock file directory: " << lock_file_dir << std::endl
         );
 
-        initialize(path, time_string, lock_file_dir);
+        initialize(path, time_string);
     }
 
     ~JobReport()
@@ -67,10 +63,9 @@ private:
 
     // Process variables
     std::filesystem::path output_path;
-    std::filesystem::path lockfile_path;
 
     // Methods
-    void initialize(const std::string &path, const std::string &time_string, const std::string &lock_file_dir);
+    void initialize(const std::string &path, const std::string &time_string);
     void initialize_dcgm_handle();
     void cleanup();
     void check_error(dcgmReturn_t result, const std::string &errorMsg);
@@ -78,31 +73,39 @@ private:
     void set_output_path(const std::string &path);
     void start_job_stats();
     void stop_job_stats();
-    void print_job_stats();
     void write_job_stats();
 };
 
-void JobReport::initialize(const std::string &path, const std::string &time_string, const std::string &lock_file_dir)
+void JobReport::initialize(const std::string &path, const std::string &time_string)
 {
     job.read_slurm_env();
     get_job_name();
     jobInfo.version = dcgmJobInfo_version;
     set_output_path(path);
     max_runtime = parse_time(time_string);
-    lockfile_path = std::filesystem::path(lock_file_dir) / ("job_report_" + job.job_id + "_" + job.job_id + ".lock");
 }
 
 void JobReport::set_output_path(const std::string &path)
 {
-    auto cwd = std::filesystem::current_path();
     if (path.empty())
     {
-        output_path = split_output ? cwd / ("report_" + job.job_id) : cwd / ("report_" + job.job_id + "_" + job.proc_id + ".bin");
+        output_path = std::filesystem::current_path() / ("report_" + job.job_id);
     }
     else
     {
         output_path = path;
     }
+
+    // Create the output directory
+    // This should act as mkdir -p command and not throw an error if the directory already exists,
+    // if the directory is not empty or if the parent directory does not exist.
+    if(std::filesystem::exists(output_path) && !std::filesystem::is_directory(output_path)){
+        raise_error("Output path exists and is not a directory.");
+    }
+
+    std::filesystem::create_directories(output_path);
+
+    output_path = output_path / ("report_" + job.job_id + "_" + job.proc_id + ".csv");
     output_path = std::filesystem::absolute(output_path);
     LOG(output_path);
 }
@@ -146,11 +149,10 @@ void JobReport::initialize_dcgm_handle()
 }
 
 void JobReport::write_job_stats(){
-    //FileIO file_io(!split_output, lockfile_path.string());
-    DataFrame df(jobInfo);
-    //file_io.write(output_path.string(), df);
-    std::cout << "Job stats:" << std::endl
-              << df << std::endl;
+    std::ofstream ofs(output_path);
+    DataFrame df(jobInfo, job);
+    df.dump(ofs);
+    ofs.close();
 }
 
 void JobReport::start_job_stats()
@@ -172,26 +174,6 @@ void JobReport::stop_job_stats()
     check_error(dcgmJobGetStats(dcgmHandle, job_name, &jobInfo), "Error getting job stats.");
     check_error(dcgmJobStopStats(dcgmHandle, job_name), "Error stopping job stats.");
     check_error(dcgmJobRemove(dcgmHandle, job_name), "Error removing job stats.");
-
-    LOG("Writing job stats to file: " + output_path.string());
-    write_job_stats();
-}
-
-void JobReport::print_job_stats(){
-    unsigned int n_gpus = jobInfo.numGpus;
-    for(unsigned int i = 0; i < n_gpus; ++i){
-        std::cout << "================================================" << "\n";
-        std::cout << "GPU " << i << ":\n";
-        std::cout << "smUtilization:\n";
-        std::cout << "    minValue: " << jobInfo.gpus[i].smUtilization.minValue << "\n";
-        std::cout << "    maxValue: " << jobInfo.gpus[i].smUtilization.maxValue << "\n";
-        std::cout << "    average: " << jobInfo.gpus[i].smUtilization.average << "\n";
-        std::cout << "memoryUtilization:\n";
-        std::cout << "    minValue: " << jobInfo.gpus[i].memoryUtilization.minValue << "\n";
-        std::cout << "    maxValue: " << jobInfo.gpus[i].memoryUtilization.maxValue << "\n";
-        std::cout << "    average: " << jobInfo.gpus[i].memoryUtilization.average << "\n";
-        std::cout << "================================================" << "\n";
-    }
 }
 
 void JobReport::start()
@@ -201,7 +183,10 @@ void JobReport::start()
         return;
     }
 
-    std::cout << "Starting job statistics.\n";
+    if(std::stoul(job.proc_id) == 0){
+        std::cout << "Starting job statistics.\n";
+    }
+
     initialize_dcgm_handle();
     start_job_stats();
 }
@@ -213,13 +198,20 @@ void JobReport::stop()
         return;
     }
 
-    std::cout << "Stopping job statistics.\n";
+    if(std::stoul(job.proc_id) == 0){
+        std::cout << "Stopping job statistics.\n";
+    }
+
     initialize_dcgm_handle();
     stop_job_stats();
 }
 
 void JobReport::run(const std::string& cmd)
-{
+{   
+    if(std::stoul(job.proc_id) == 0){
+        std::cout << "Recording job statistics..." << std::endl;
+    }
+
     if (job.root)
     {
         initialize_dcgm_handle();
@@ -231,7 +223,7 @@ void JobReport::run(const std::string& cmd)
     if (job.root)
     {
         stop_job_stats();
-        //print_job_stats();
+        write_job_stats();
     }
 }
 

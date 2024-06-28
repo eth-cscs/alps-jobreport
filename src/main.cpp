@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <filesystem>
 
 #include "args.hpp"     // Argument parsers
 #include "jobreport.hpp"
@@ -25,9 +26,7 @@ void stop_cmd(const StopCmdArgs &args)
     JobReport jr(
         args.output,
         0,                  // Dummy sampling time
-        "0:00:00",          // Dummy max time
-        args.split_output,
-        args.lock_file_dir
+        "0:00:00"           // Dummy max time
     );
     jr.stop();
 }
@@ -37,12 +36,27 @@ void main_cmd(const MainCmdArgs &args)
     JobReport jr(
         args.output,
         args.sampling_time,
-        args.max_time,
-        args.split_output,
-        args.lock_file_dir
+        args.max_time
     );
     jr.run(args.cmd);
 }
+
+void export_cmd(const ExportCmdArgs &args)
+{
+    // Load data into DataFrame
+    DataFrame df = load_dataframe(args.input);
+
+    // Compute averages
+    DataFrameAvg avg = df.average();
+
+    // Print summary
+    std::cout << "Summary of Job Statistics" << std::endl 
+              << "Average over all GPUs" << std::endl
+              << avg << std::endl
+              << "GPU Specific Values" << std::endl
+              << df << std::endl;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -73,6 +87,7 @@ int main(int argc, char **argv)
             export_args.help();
             return 1;
         }
+        export_cmd(export_args);
     } else if (cmd == "hook") {
         HookCmdArgs hook_args;
         if(hook_args.parse(argc, argv) != Status::Success) {
