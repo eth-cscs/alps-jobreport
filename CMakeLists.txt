@@ -12,7 +12,7 @@ include_directories("./include")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
     if(GCC_VERSION VERSION_LESS 9)
-        set(ADDITIONAL_LIBS stdc++)
+        set(ADDITIONAL_LIBS stdc++fs)
     endif()
 endif()
 
