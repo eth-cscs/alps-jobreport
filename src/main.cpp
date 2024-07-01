@@ -44,17 +44,7 @@ void main_cmd(const MainCmdArgs &args)
 void export_cmd(const ExportCmdArgs &args)
 {
     // Load data into DataFrame
-    DataFrame df = load_dataframe(args.input);
-
-    // Compute averages
-    DataFrameAvg avg = df.average();
-
-    // Print summary
-    std::cout << "Summary of Job Statistics" << std::endl 
-              << "Average over all GPUs" << std::endl
-              << avg << std::endl
-              << "GPU Specific Values" << std::endl
-              << df << std::endl;
+    process_stats(args.input);
 }
 
 

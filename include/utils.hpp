@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <vector>
 #include <sstream>
+#include <unistd.h>
+#include <limits.h>
 
 // Debugging macro
 #ifdef JOBREPORT_DEBUG
@@ -14,6 +16,17 @@
     #define LOG(x)
 #endif
 
+std::string get_hostname() {
+    char hostname[HOST_NAME_MAX + 1]; // HOST_NAME_MAX doesn't include the null terminator
+    // gethostname returns 0 on success, and -1 on failure
+    if (gethostname(hostname, sizeof(hostname)) == 0) {
+        return std::string(hostname);
+    } else {
+        // Handle the error appropriately, here we just return an empty string
+        std::cout << "WARNING: Unable to read hostname." << std::endl;
+        return std::string("unknown_host");
+    }
+}
 
 void raise_error(const std::string &msg)
 {

@@ -129,21 +129,11 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
                                              format_power(df.powerUsageMin) + " / " +
                                              format_power(df.powerUsageMax)});
 
-    // table.add_row(tabulate::Table::Row_t{"pcieRxBandwidth (avg/min/max)",
-    //                                      format_bytes(df.pcieRxBandwidthAvg) + " / " +
-    //                                          format_bytes(df.pcieRxBandwidthMin) + " / " +
-    //                                          format_bytes(df.pcieRxBandwidthMax)});
-
-    // table.add_row(tabulate::Table::Row_t{"pcieTxBandwidth (avg/min/max)",
-    //                                      format_bytes(df.pcieTxBandwidthAvg) + " / " +
-    //                                          format_bytes(df.pcieTxBandwidthMin) + " / " +
-    //                                          format_bytes(df.pcieTxBandwidthMax)});
-
     table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
 
     table.add_row(tabulate::Table::Row_t{"End Time", format_date(df.endTime)});
 
-    table.add_row(tabulate::Table::Row_t{"Elapsed Time (s)", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
+    table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
     table.add_row(tabulate::Table::Row_t{"SM Utilization % (avg/min/max)",
                                          std::to_string(df.smUtilizationAvg) + " / " +
@@ -163,7 +153,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
         .corner("+");
 
     // Set a fixed width for each header column and enable text wrapping
-    table[0].format().width(40);
+    table[0].format().width(50);
 
     os << table << std::endl;
 
@@ -176,14 +166,9 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     tabulate::Table table;
 
     // Add header row
-    table.add_row({"GPU",
-                   //"energyConsumed",
-                   //"powerUsage (avg/min/max)",
-                   //"pcieRxBandwidth (avg/min/max)",
-                   //"pcieTxBandwidth (avg/min/max)",
-                   //"startTime",
-                   //"endTime",
-                   "Elapsed (s)",
+    table.add_row({"Host",
+                   "GPU",
+                   "Elapsed",
                    "Utilization %\n(avg/min/max)",
                    "Memory Utilization %\n(avg/min/max)"});
 
@@ -191,22 +176,8 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     for (size_t i = 0; i < num_rows; ++i)
     {
         table.add_row(tabulate::Table::Row_t{
+            df.host[i],
             std::to_string(df.gpuId[i]),
-            /*
-            This is commented out to make the table more readable
-            but all the data is still available in the DataFrame
-            std::to_string(df.energyConsumed[i]),
-            std::to_string(df.powerUsageAvg[i]) + " / " +
-            std::to_string(df.powerUsageMin[i]) + " / " +
-            std::to_string(df.powerUsageMax[i]),
-            std::to_string(df.pcieRxBandwidthAvg[i]) + " / " +
-            std::to_string(df.pcieRxBandwidthMin[i]) + " / " +
-            std::to_string(df.pcieRxBandwidthMax[i]),
-            std::to_string(df.pcieTxBandwidthAvg[i]) + " / " +
-            std::to_string(df.pcieTxBandwidthMin[i]) + " / " +
-            std::to_string(df.pcieTxBandwidthMax[i]),
-            std::to_string(df.startTime[i]),
-            std::to_string(df.endTime[i]), */
             format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
             std::to_string(df.smUtilizationAvg[i]) + " / " +
                 std::to_string(df.smUtilizationMin[i]) + " / " +
@@ -237,10 +208,11 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     table[num_rows].format().border_bottom("-").corner_bottom_left("+").corner_bottom_right("+");
 
     // Set a fixed width for each column and enable text wrapping
-    table[0][0].format().width(9);  // GPU ID
-    table[0][1].format().width(23); // Elapsed time
-    table[0][2].format().width(23); // Utilization
-    table[0][3].format().width(23); // Memory utilization
+    table[0][0].format().width(23);  // Host
+    table[0][1].format().width(5);  // GPU ID
+    table[0][2].format().width(23); // Elapsed time
+    table[0][3].format().width(23); // Utilization
+    table[0][4].format().width(23); // Memory utilization
 
     // Print the table
     os << table << std::endl;
@@ -248,9 +220,63 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     return os;
 }
 
-DataFrame load_dataframe(const std::string &input)
+DataFrame load_dataframe(const std::filesystem::path &target)
 {
     DataFrame df;
+
+    // Check if the target exists
+    if (!std::filesystem::exists(target))
+    {
+        raise_error("File not found: \"" + target.string() + "\"");
+    }
+
+    // Target is not a directory
+    if (!std::filesystem::is_directory(target))
+    {
+        //raise_error("Input must be a directory: \"" + input + "\"");
+        std::cout << "WARNING: Input is not a directory. Skipping: \"" << target << "\"" << std::endl;
+        return df;
+    }
+
+    // Target is a directory
+    // Iterate over all files in the directory
+    for (const auto &entry : std::filesystem::directory_iterator(target))
+    {
+        // Check if the entry is a regular file
+        if (entry.is_regular_file())
+        {
+            // Read file into DataFrame
+            std::ifstream ifs(entry.path());
+            // Load the data from the file into the DataFrame
+            // this operation will append the data to the existing DataFrame
+            df.load(ifs);
+            ifs.close();
+        }
+    }
+  
+    // Sort DataFrame by GPU ID
+    df.sort_by_gpu_id();
+
+    return df;
+}
+
+void print_job_stats(const std::filesystem::path &input)
+{
+    // Load the DataFrame from the input directory
+    DataFrame df = load_dataframe(input);
+
+    // Compute averages
+    DataFrameAvg avg = df.average();
+
+    // Print summary
+    std::cout << "Summary of Job Statistics" << std::endl 
+              << "Average over all GPUs" << std::endl
+              << avg << std::endl
+              << "GPU Specific Values" << std::endl
+              << df << std::endl;
+}
+
+void process_stats(const std::string& input){
     std::filesystem::path target(input);
 
     // Check if the target exists
@@ -259,41 +285,29 @@ DataFrame load_dataframe(const std::string &input)
         raise_error("File not found: \"" + input + "\"");
     }
 
-    // Check if the target is a regular file
-    if (std::filesystem::is_regular_file(target))
+    // Target is not a directory
+    if (!std::filesystem::is_directory(target))
     {
-        // Read file into DataFrame
-        std::ifstream ifs(target);
-        df.load(ifs);
-        ifs.close();
+        raise_error("Input must be a directory: \"" + input + "\"");
     }
+
     // Target is a directory
-    else if (std::filesystem::is_directory(target))
-    {
-        // Iterate over all files in the directory
+    // Check if target contains file ".jr_root"
+    if(std::filesystem::exists(target / ".jr_root")){
+       // Iterate over all directories in target
         for (const auto &entry : std::filesystem::directory_iterator(target))
         {
-            // Check if the entry is a regular file
-            if (entry.is_regular_file())
+            // Check if the entry is a directory
+            if (entry.is_directory())
             {
-                // Read file into DataFrame
-                std::ifstream ifs(entry.path());
-                // Load the data from the file into the DataFrame
-                // this operation will append the data to the existing DataFrame
-                df.load(ifs);
-                ifs.close();
+                print_job_stats(entry.path());
             }
         }
     }
-    else
-    {
-        raise_error("An unknown error occurred while reading the input profiling data. Are you sure the file or directory exist?");
+    else{ // The folder is a step folder already
+        print_job_stats(target);
     }
 
-    // Sort DataFrame by GPU ID
-    df.sort_by_gpu_id();
-
-    return df;
 }
 
 #endif

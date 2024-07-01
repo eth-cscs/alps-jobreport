@@ -93,30 +93,38 @@ void JobReport::set_output_path(const std::string &path)
     }
     else
     {
-        output_path = path;
+        output_path = std::filesystem::path(path);
+    }
+
+    // Check if a file exists with the same name
+    if(std::filesystem::exists(output_path) && !std::filesystem::is_directory(output_path)){
+        raise_error("Output path exists and is not a directory.");
+    }
+
+    if(job.root){
+        // Root process creates a .jr_root file in the output directory
+        std::ofstream ofs(output_path / ".jr_root", std::ios::app);
+        ofs.close();
     }
 
     // Create the output directory
     // This should act as mkdir -p command and not throw an error if the directory already exists,
     // if the directory is not empty or if the parent directory does not exist.
-    if(std::filesystem::exists(output_path) && !std::filesystem::is_directory(output_path)){
-        raise_error("Output path exists and is not a directory.");
-    }
-
+    output_path = output_path / job.step_id;
     std::filesystem::create_directories(output_path);
 
-    output_path = output_path / ("report_" + job.job_id + "_" + job.proc_id + ".csv");
+    output_path = output_path / (job.proc_id + ".csv");
     output_path = std::filesystem::absolute(output_path);
     LOG(output_path);
 }
 
 void JobReport::get_job_name()
 {
-    std::string tmp = job.job_id + "_" + job.proc_id;
+    std::string tmp = job.job_id + "_" + job.proc_id + "_" + job.step_id;
     if (tmp.size() > 63)
     {
-        std::cerr << "WARNING: string ${SLURM_JOB_ID}_${SLURM_PROC_ID} exceeds the safe \
-                      limit of 64 characters allowed for job name.\n";
+        std::cerr << "WARNING: string ${SLURM_JOB_ID}_${SLURM_PROC_ID}_${SLURM_STEP_ID} exceeds the safe \
+                      limit of 63 characters allowed for job name.\n";
         tmp.resize(63);
     }
     std::strncpy(job_name, tmp.c_str(), tmp.size());
@@ -150,7 +158,7 @@ void JobReport::initialize_dcgm_handle()
 
 void JobReport::write_job_stats(){
     std::ofstream ofs(output_path);
-    DataFrame df(jobInfo, job);
+    DataFrame df(jobInfo);
     df.dump(ofs);
     ofs.close();
 }
@@ -178,7 +186,7 @@ void JobReport::stop_job_stats()
 
 void JobReport::start()
 {
-    if (!job.root)
+    if (!job.node_root)
     {
         return;
     }
@@ -193,7 +201,7 @@ void JobReport::start()
 
 void JobReport::stop()
 {
-    if (!job.root)
+    if (!job.node_root)
     {
         return;
     }
@@ -208,11 +216,11 @@ void JobReport::stop()
 
 void JobReport::run(const std::string& cmd)
 {   
-    if(std::stoul(job.proc_id) == 0){
+    if(job.root){
         std::cout << "Recording job statistics..." << std::endl;
     }
 
-    if (job.root)
+    if (job.node_root)
     {
         initialize_dcgm_handle();
         start_job_stats();
@@ -220,7 +228,7 @@ void JobReport::run(const std::string& cmd)
 
     system(cmd.c_str());
 
-    if (job.root)
+    if (job.node_root)
     {
         stop_job_stats();
         write_job_stats();

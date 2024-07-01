@@ -22,12 +22,16 @@ public:
     // Public variables
     std::string job_id = "";
     std::string proc_id = "";
+    std::string step_id = "";
+    std::string step_gpus = "";
+
     unsigned int n_tasks_per_node = 0;
     unsigned int gpus_per_task = 0;
     unsigned int n_nodes = 0;
     unsigned int n_procs = 0;
     unsigned int n_gpus = 0;
     bool root = false;
+    bool node_root = false;
 
     // Debugging
     void print_vars();
@@ -66,6 +70,13 @@ Status SlurmJob::read_slurm_env()
     
     if(read_env_var(proc_id, "SLURM_PROCID") != Status::Success)
         raise_error("SLURM_PROCID not found");
+
+    if(read_env_var(step_id, "SLURM_STEPID") != Status::Success)
+        raise_error("SLURM_STEPID not found");
+
+    if(read_env_var(step_gpus, "SLURM_STEP_GPUS") != Status::Success)
+        std::cout << "Warning: unable to read SLURM_GPUS_PER_TASK" << std::endl
+                  << "Consider passing --gpus-per-task <x> in your job script." << std::endl;
     
     if(read_env_var(n_tasks_per_node, "SLURM_TASKS_PER_NODE") != Status::Success)
         std::cout << "Warning: unable to read SLURM_TASKS_PER_NODE" << std::endl
@@ -82,7 +93,8 @@ Status SlurmJob::read_slurm_env()
     read_env_var(n_gpus, "SLURM_NGPUS");
 
     // Determine the number of processes per node
-    if(n_tasks_per_node == 0)
+    // Only needed if SLURM_STEP_GPUS is not set
+    if(step_gpus.empty() && n_tasks_per_node == 0)
     {
         if(n_procs != 0 && n_nodes != 0) {
             n_tasks_per_node = n_procs / n_nodes;
@@ -92,7 +104,9 @@ Status SlurmJob::read_slurm_env()
     } 
         
     // Determine if the current process is the root process on its node
-    root = (std::stoul(proc_id) % n_tasks_per_node == 0);
+    // A process is considered the root process of a node if
+    node_root = !step_gpus.empty() || (std::stoul(proc_id) % n_tasks_per_node == 0);
+    root = (std::stoul(proc_id) == 0);
 
     return Status::Success;
 }
