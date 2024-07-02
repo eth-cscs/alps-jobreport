@@ -9,17 +9,6 @@
 #include "dataframe.hpp"
 #include "dataframe_io.hpp"
 
-// Start subcommand
-void start_cmd(const StartCmdArgs &args)
-{
-    JobReport jr(
-        ".",                // Dummy output path
-        args.sampling_time,
-        args.max_time
-    );
-    jr.start();
-}
-
 void main_cmd(const MainCmdArgs &args)
 {
     JobReport jr(
