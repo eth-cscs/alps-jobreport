@@ -159,6 +159,16 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 
     table.add_row(tabulate::Table::Row_t{"Step Id", std::to_string(df.stepId)});
 
+    table.add_row(tabulate::Table::Row_t{"User", df.user});
+
+    table.add_row(tabulate::Table::Row_t{"SLURM Account", df.account});
+
+    table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
+
+    table.add_row(tabulate::Table::Row_t{"End Time", format_date(df.endTime)});
+
+    table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
+
     table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
 
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
@@ -166,12 +176,6 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
     table.add_row(tabulate::Table::Row_t{"Power Usage (avg/min/max)",
                                          format_power(df.powerUsageAvg, df.powerUsageMin, df.powerUsageMax)
                                          });
-
-    table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
-
-    table.add_row(tabulate::Table::Row_t{"End Time", format_date(df.endTime)});
-
-    table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
     table.add_row(tabulate::Table::Row_t{"SM Utilization % (avg/min/max)",
                                          format_percent(df.smUtilizationAvg, df.smUtilizationMin, df.smUtilizationMax)

@@ -20,6 +20,8 @@ public:
     Status read_slurm_env();
 
     // Public variables
+    std::string user = "unknown_user";
+    std::string account = "unknown_account";
     std::string job_id = "";
     std::string proc_id = "";
     std::string step_id = "";
@@ -96,6 +98,9 @@ Status SlurmJob::read_slurm_env()
     
     time_limit = end_time - start_time;
 
+    // Read the user and account
+    read_env_var(user, "USER");
+    read_env_var(account, "SLURM_JOB_ACCOUNT");
     
     // Backup values used to determine the number of nodes and processors
     // if SLURM_TASKS_PER_NODE is not set

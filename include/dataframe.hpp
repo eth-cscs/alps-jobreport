@@ -18,6 +18,8 @@
 
 struct DataFrameAvg
 {
+    std::string user;
+    std::string account;
     unsigned int jobId;
     unsigned int stepId;
     unsigned int nGpus;
@@ -46,6 +48,8 @@ public:
     DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job);
 
     // Columns
+    DFColumn<std::string> user;
+    DFColumn<std::string> account;
     DFColumn<unsigned int> jobId;
     DFColumn<unsigned int> stepId;
     DFColumn<std::string> host;
@@ -86,6 +90,8 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
 
     for (unsigned int id = 0; id < n; ++id)
     {
+        user.push_back(job.user);
+        account.push_back(job.account);
         jobId.push_back(_job_id);
         stepId.push_back(_step_id);
         host.push_back(hostName);
@@ -110,6 +116,8 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
 
 void DataFrame::reserve(unsigned int n)
 {
+    user.reserve(n);
+    account.reserve(n);
     jobId.reserve(n);
     stepId.reserve(n);
     host.reserve(n);
@@ -143,6 +151,8 @@ void DataFrame::sort_by_gpu_id()
               });
 
     // Apply the sorted order to each DFColumn
+    user.permute(indices);
+    account.permute(indices);
     jobId.permute(indices);
     stepId.permute(indices);
     host.permute(indices);
@@ -171,6 +181,8 @@ DataFrameAvg DataFrame::average()
     }
 
     DataFrameAvg avg;
+    avg.user = user[0];
+    avg.account = account[0];
     avg.jobId = jobId[0];
     avg.stepId = stepId[0];
     avg.nGpus = gpuId.size();
@@ -195,17 +207,23 @@ void DataFrame::dump(std::ofstream &os)
 
     // Write the header
     os << "jobId,stepId,"
+       << "username,slurm_account,"
        << "host,gpuId,"
        << "powerUsageMin,powerUsageMax,powerUsageAvg,"
        << "startTime,endTime,"
        << "smUtilizationMin,smUtilizationMax,smUtilizationAvg,"
        << "memoryUtilizationMin,memoryUtilizationMax,memoryUtilizationAvg\n";
 
+    // Disable scientific notation
+    os << std::fixed << std::setprecision(6);
+
     // Write the data
     for (size_t i = 0; i < numRows; ++i)
     {
         os << jobId[i] << ','
            << stepId[i] << ','
+           << user[i] << ','
+           << account[i] << ','
            << host[i] << ','
            << gpuId[i] << ',' 
            << powerUsageMin[i] << ',' 
@@ -257,12 +275,16 @@ void DataFrame::load(std::ifstream &is)
         // Read each value into the respective column
         std::getline(ss, value, ',');
         jobId.push_back(std::stoul(value));
-
-        // Read each value into the respective column
+        
         std::getline(ss, value, ',');
         stepId.push_back(std::stoul(value));
         
-        // Read each value into the respective column
+        std::getline(ss, value, ',');
+        user.push_back(value);
+
+        std::getline(ss, value, ',');
+        account.push_back(value);
+
         std::getline(ss, value, ',');
         host.push_back(value);
 
