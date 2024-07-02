@@ -45,7 +45,14 @@ int parse_time(const std::string &time_str)
     if (time_str.find('-') != std::string::npos)
     {
         size_t dash_pos = time_str.find('-');
-        days = std::stoi(time_str.substr(0, dash_pos));
+        try{
+            days = std::stoi(time_str.substr(0, dash_pos));
+        } catch (std::exception &e) {
+            raise_error("Invalid value for -t, --max_time\n"
+                        "Expected a time string in the format DD-HH:MM:SS, got: \"" + time_str + "\""
+            );
+        }
+        
         remaining_time = time_str.substr(dash_pos + 1);
     }
 
@@ -56,7 +63,13 @@ int parse_time(const std::string &time_str)
     // Split the input string based on the ':' delimiter
     while (std::getline(ss, component, ':'))
     {
-        time_components.push_back(std::stoi(component));
+        try{
+            time_components.push_back(std::stoi(component));
+        } catch (std::exception &e) {
+            raise_error("Invalid value for -t, --max_time\n"
+                        "Expected a time string in the format DD-HH:MM:SS, got: \"" + time_str + "\"" 
+            );
+        }
     }
 
     // Determine the format based on the number of components

@@ -118,17 +118,24 @@ void JobReport::set_output_path(const std::string &path)
     if (job.root)
     {
         // Root process creates a metadata file in the output directory
-        std::filesystem::create_directories(output_path);
-        std::ofstream ofs(output_path / ROOT_METADATA_FILE, std::ios::app);
-        ofs.close();
+        try{
+            std::filesystem::create_directories(output_path);
+            std::ofstream ofs(output_path / ROOT_METADATA_FILE, std::ios::app);
+            ofs.close();
+        } catch (std::exception &e) {
+            raise_error("Error creating output directory and/or metadata files: " + std::string(e.what()));
+        }
     }
 
     // Create the output directory
     // This should act as mkdir -p command and not throw an error if the directory already exists,
     // if the directory is not empty or if the parent directory does not exist.
     output_path = output_path / ("step_" + job.step_id);
-    std::filesystem::create_directories(output_path);
-
+    try{
+        std::filesystem::create_directories(output_path);
+    } catch (std::exception &e) {
+        raise_error("Error creating output directory: " + std::string(e.what()));
+    }
     output_path = output_path / ("proc_" + job.proc_id + ".csv");
     output_path = std::filesystem::absolute(output_path);
     LOG(output_path);

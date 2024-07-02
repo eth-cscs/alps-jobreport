@@ -7,6 +7,7 @@
 #include <string>
 #include "status.hpp"
 #include "third_party/argh/argh.hpp"
+#include "utils.hpp"
 
 // This function looks for the '--' delimiter and extracts
 // the following string as a non-argument
@@ -81,6 +82,12 @@ public:
         // This is required for the main command
         if(cmd.empty() && !version) {
             return Status::MissingNonArguments;
+        }
+        
+        if (sampling_time < 0) {
+            std::cout << "Invalid value for -u, --sampling_time" << std::endl
+                      << "Expected a positive integer, got: \"" << sampling_time << "\"" << std::endl;
+            return Status::InvalidValue;
         }
 
         return Status::Success;
