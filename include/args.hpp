@@ -47,8 +47,6 @@ jobreport: Main command. Usage: jobreport -arg=val -- ./workload -arg=val
     -o, --output: Output file or directory depending on the context
     -u, --sampling_time: Sampling time in seconds
     -t, --max_time: Maximum expected runtime in seconds
-    --split-output: Split the output into multiple files
-    --lock-file-dir: Lock file to use for single file output
     -- [non-arguments]: Non-arguments to run as a workload command
 */
 class MainCmdArgs {
@@ -90,19 +88,17 @@ public:
 
     void help() {
         std::cout 
-            << "Usage: jobreport [subcommand] [options] [-- workload_command]" << std::endl
+            << "Usage: jobreport [subcommand | [options] -- workload_command]" << std::endl
             << std::endl
             << "Subcommands:" << std::endl
-            //<< "  start                          Start the jobreport tool" << std::endl
             << "  print                         Generate a jobreport file" << std::endl
-            //<< "  hook                           Generate DCGM hook script for Pyxis" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
             << "  -v, --version                  Show version information" << std::endl
-            << "  -o, --output <path>            Specify output directory (default: ./report_<SLURM_JOB_ID>)" << std::endl
-            << "  -u, --sampling_time <seconds>  Set the sampling time in seconds (default: 10)" << std::endl
-            << "  -t, --max_time <time>          Set the maximum time (format: DD-HH:MM:SS, default: 12:00:00)" << std::endl
+            << "  -o, --output <path>            Specify output directory (default: ./jobreport_<SLURM_JOB_ID>)" << std::endl
+            << "  -u, --sampling_time <seconds>  Set the sampling time in seconds (default: automatically determined)" << std::endl
+            << "  -t, --max_time <time>          Set the maximum time (format: DD-HH:MM:SS, default: 24:00:00)" << std::endl
             << std::endl
             << "Arguments:" << std::endl
             << "  workload_command               The command to run as the workload" << std::endl
@@ -121,114 +117,10 @@ public:
 
     // Public variables used to store the parsed arguments with default values
     bool version = false;                 // -v, --version
-    std::string output = "";            // -o, --output
-    int sampling_time = 10;               // -u, --sampling_time
-    std::string max_time = "12:00:00";    // -t, --max_time
-    bool split_output = false;            // --split-output
-    std::string lock_file_dir = "/tmp";   // --lock-file-dir
-    std::string cmd = "";       // Non-arguments to run as a workload command
-
-private:
-    argh::parser parser;
-};
-
-/*
-jobreport start: Start the jobreport tool -> used for compatibility with containers
-    -u, --sampling_time: Sampling time in seconds
-    -t, --max_time: Maximum expected runtime in seconds
-*/
-class StartCmdArgs {
-public:
-    StartCmdArgs() {
-        parser.add_params({
-            "-u", "--sampling_time",
-            "-t", "--max_time"
-        });
-    }
-
-    Status parse(int argc, char** argv) {
-        parser.parse(argc, argv);
-
-        // Check if -h or --help is present
-        if(parser[{"-?", "-h", "--help"}]) {
-            return Status::Help;
-        }
-
-        parser({"-u", "--sampling_time"}, sampling_time) >> sampling_time;
-        parser({"-t", "--max_time"}, max_time) >> max_time;
-
-        return Status::Success;
-    }
-
-    void help() {
-        std::cout 
-            << "Usage: jobreport start [options]" << std::endl
-            << std::endl
-            << "Options:" << std::endl
-            << "  -h, --help                     Show this help message" << std::endl
-            << "  -u, --sampling_time <seconds>  Set the sampling time in seconds (default: 10)" << std::endl
-            << "  -t, --max_time <time>          Set the maximum time (format: DD-HH:MM:SS, default: 12:00:00)" << std::endl
-            << std::endl
-            << "Example:" << std::endl
-            << "  jobreport start -u 20 -t 1-00:00:00" << std::endl;
-    }
-
-    void print_params() {
-        std::cout << "sampling_time: " << sampling_time << std::endl;
-        std::cout << "max_time: " << max_time << std::endl;
-    }
-
-    int sampling_time = 10;               // -u, --sampling_time
-    std::string max_time = "12:00:00";    // -t, --max_time
-
-private:
-    argh::parser parser;
-};
-
-/*
-jobreport stop: Stop the jobreport tool -> used for compatibility with containers
-    -o, --output: Output file or directory depending on the context
-    --split-output: Split the output into multiple files
-    --lock-file-dir: Lock file to use for single file output
-*/
-class StopCmdArgs {
-public:
-    StopCmdArgs() {
-        parser.add_params({
-            "-o", "--output"
-        });
-    }
-
-    Status parse(int argc, char** argv) {
-        parser.parse(argc, argv);
-
-        // Check if -h or --help is present
-        if(parser[{"-?", "-h", "--help"}]) {
-            return Status::Help;
-        }
-
-        parser({"-o", "--output"}, output) >> output;
-
-        return Status::Success;
-    }
-
-    void help() {
-        std::cout 
-            << "Usage: jobreport stop [options]" << std::endl
-            << std::endl
-            << "Options:" << std::endl
-            << "  -h, --help                     Show this help message" << std::endl
-            << "  -o, --output <path>            Specify output directory (default: ./report_<SLURM_JOB_ID>)" << std::endl
-            << std::endl
-            << "Example:" << std::endl
-            << "  jobreport stop -o ./output --split-output" << std::endl;
-    }
-
-    void print_params() {
-        std::cout << "output: " << output << std::endl;
-    }
-
-    std::string output = "";            // -o, --output
+    std::string output = "";              // -o, --output
+    int sampling_time = 0;               // -u, --sampling_time
+    std::string max_time = "";            // -t, --max_time
+    std::string cmd = "";                 // Non-arguments to run as a workload command
 
 private:
     argh::parser parser;
@@ -281,42 +173,4 @@ public:
 private:
     argh::parser parser;
 };
-
-/*
-jobreport hook: Generate Pyxis DCGM hook script for the jobreport tool
-    - None
-*/
-class HookCmdArgs {
-public:
-    HookCmdArgs() = default;
-
-    Status parse(int argc, char** argv) {
-        // Parse the arguments
-        parser.parse(argc, argv);
-
-        // Check if -h or --help is present
-        if(parser[{"-?", "-h", "--help"}]) {
-            return Status::Help;
-        }
-
-        return Status::Success;
-    }
-
-    void help() {
-        std::cout 
-            << "Usage: jobreport hook" << std::endl
-            << std::endl
-            << "This command generates a Pyxis DCGM hook script for the jobreport tool." << std::endl
-            << std::endl
-            << "Options:" << std::endl
-            << "  -h, --help                     Show this help message" << std::endl
-            << std::endl
-            << "Example:" << std::endl
-            << "  jobreport hook > dcgm_hook.sh" << std::endl;
-    }
-
-    private:
-    argh::parser parser;
-};
-
 #endif // JOBREPORT_ARGS_HPP
