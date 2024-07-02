@@ -91,7 +91,7 @@ public:
             << "Usage: jobreport [subcommand | [options] -- workload_command]" << std::endl
             << std::endl
             << "Subcommands:" << std::endl
-            << "  print                         Generate a jobreport file" << std::endl
+            << "  print                          Print a job report" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
@@ -104,7 +104,7 @@ public:
             << "  workload_command               The command to run as the workload" << std::endl
             << std::endl
             << "Example:" << std::endl
-            << "  jobreport -- ./workload -arg1=val1 -arg2=val2" << std::endl;
+            << "  jobreport -- sleep 5" << std::endl;
     }
 
     void print_params() {
@@ -161,7 +161,7 @@ public:
             << "  -h, --help                     Show this help message" << std::endl
             << std::endl
             << "Example:" << std::endl
-            << "  jobreport print ./input" << std::endl;
+            << "  jobreport print jobreport_1234" << std::endl;
     }
 
     void print_params() {
