@@ -14,6 +14,19 @@
 #include "dataframe.hpp"
 #include "macros.hpp"
 
+std::string format_percent(unsigned int p) {
+
+    std::string p_text = std::to_string(p);
+    constexpr int width = 3;
+
+    if (width <= p_text.size()) {
+        return p_text;
+    }
+
+    int padding = width - p_text.size();
+    return std::string(padding, ' ') + p_text;
+}
+
 std::string format_bytes(long long val)
 {
     std::vector<std::string> suffixes = {"B", "KiB", "MiB", "GiB", "TiB"};
@@ -119,15 +132,20 @@ std::string format_date(long long timestamp)
 std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 {
     tabulate::Table table;
+    table.add_row(tabulate::Table::Row_t{"Job Id", std::to_string(df.jobId)});
+    
+    table.add_row(tabulate::Table::Row_t{"Step Id", std::to_string(df.stepId)});
+    
     table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
+    
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.nGpus *
                                                                                 df.powerUsageAvg / 3600. *
                                                                                 (df.endTime - df.startTime) / 1e6)
                                         });
 
     table.add_row(tabulate::Table::Row_t{"Power Usage (avg/min/max)",
-                                         format_power(df.powerUsageAvg) + " / " +
-                                             format_power(df.powerUsageMin) + " / " +
+                                         format_power(df.powerUsageAvg) + "/ " +
+                                             format_power(df.powerUsageMin) + "/ " +
                                              format_power(df.powerUsageMax)});
 
     table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
@@ -137,14 +155,14 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
     table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
     table.add_row(tabulate::Table::Row_t{"SM Utilization % (avg/min/max)",
-                                         std::to_string(df.smUtilizationAvg) + " / " +
-                                             std::to_string(df.smUtilizationMin) + " / " +
-                                             std::to_string(df.smUtilizationMax)});
+                                         format_percent(df.smUtilizationAvg) + "/ " +
+                                             format_percent(df.smUtilizationMin) + "/ " +
+                                             format_percent(df.smUtilizationMax)});
 
     table.add_row(tabulate::Table::Row_t{"Memory Utilization % (avg/min/max)",
-                                         std::to_string(df.memoryUtilizationAvg) + " / " +
-                                             std::to_string(df.memoryUtilizationMin) + " / " +
-                                             std::to_string(df.memoryUtilizationMax)});
+                                         format_percent(df.memoryUtilizationAvg) + "/ " +
+                                             format_percent(df.memoryUtilizationMin) + "/ " +
+                                             format_percent(df.memoryUtilizationMax)});
 
     table.format()
         .border_top("-")
@@ -154,7 +172,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
         .corner("+");
 
     // Set a fixed width for each header column and enable text wrapping
-    table[0].format().width(50);
+    table[0].format().width(41);
 
     os << table << std::endl;
 
@@ -170,7 +188,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     table.add_row({"Host",
                    "GPU",
                    "Elapsed",
-                   "Utilization %\n(avg/min/max)",
+                   "SM Utilization %\n(avg/min/max)",
                    "Memory Utilization %\n(avg/min/max)"});
 
     size_t num_rows = df.gpuId.size();
@@ -180,12 +198,12 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
             df.host[i],
             std::to_string(df.gpuId[i]),
             format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
-            std::to_string(df.smUtilizationAvg[i]) + " / " +
-                std::to_string(df.smUtilizationMin[i]) + " / " +
-                std::to_string(df.smUtilizationMax[i]),
-            std::to_string(df.memoryUtilizationAvg[i]) + " / " +
-                std::to_string(df.memoryUtilizationMin[i]) + " / " +
-                std::to_string(df.memoryUtilizationMax[i])});
+            format_percent(df.smUtilizationAvg[i]) + "/ " +
+                format_percent(df.smUtilizationMin[i]) + "/ " +
+                format_percent(df.smUtilizationMax[i]),
+            format_percent(df.memoryUtilizationAvg[i]) + "/ " +
+                format_percent(df.memoryUtilizationMin[i]) + "/ " +
+                format_percent(df.memoryUtilizationMax[i])});
     }
 
     // Enable multi-byte character support
@@ -209,11 +227,11 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     table[num_rows].format().border_bottom("-").corner_bottom_left("+").corner_bottom_right("+");
 
     // Set a fixed width for each column and enable text wrapping
-    table[0][0].format().width(23);  // Host
-    table[0][1].format().width(5);  // GPU ID
-    table[0][2].format().width(23); // Elapsed time
-    table[0][3].format().width(23); // Utilization
-    table[0][4].format().width(23); // Memory utilization
+    table[0][0].format().width(15);  // Host
+    table[0][1].format().width(6);  // GPU ID
+    table[0][2].format().width(18); // Elapsed time
+    table[0][3].format().width(18); // Utilization
+    table[0][4].format().width(22); // Memory utilization
 
     // Print the table
     os << table << std::endl;
