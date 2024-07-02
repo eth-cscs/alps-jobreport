@@ -24,6 +24,7 @@ struct DataFrameAvg
     double powerUsageMin;
     double powerUsageMax;
     double powerUsageAvg;
+    double energyConsumed;
     long long startTime;
     long long endTime;
     int smUtilizationMin;
@@ -89,9 +90,13 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
         stepId.push_back(_step_id);
         host.push_back(hostName);
         gpuId.push_back(id);
-        powerUsageMin.push_back(jobInfo.gpus[id].powerUsage.minValue);
-        powerUsageMax.push_back(jobInfo.gpus[id].powerUsage.maxValue);
-        powerUsageAvg.push_back(jobInfo.gpus[id].powerUsage.average);
+        
+        // This is a hack to handle the case where the power usage is not available
+        double tmp;
+        powerUsageMin.push_back(tmp = jobInfo.gpus[id].powerUsage.minValue < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
+        powerUsageMax.push_back(tmp = jobInfo.gpus[id].powerUsage.maxValue < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
+        powerUsageAvg.push_back(tmp = jobInfo.gpus[id].powerUsage.average < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
+
         startTime.push_back(jobInfo.gpus[id].startTime);
         endTime.push_back(jobInfo.gpus[id].endTime);
         smUtilizationMin.push_back(jobInfo.gpus[id].smUtilization.minValue);
@@ -174,6 +179,7 @@ DataFrameAvg DataFrame::average()
     avg.powerUsageAvg = powerUsageAvg.average();
     avg.startTime = startTime.average();
     avg.endTime = endTime.average();
+    avg.energyConsumed = powerUsageAvg.sum()/3600. * (avg.endTime - avg.startTime) / 1e6;
     avg.smUtilizationMin = smUtilizationMin.average();
     avg.smUtilizationMax = smUtilizationMax.average();
     avg.smUtilizationAvg = smUtilizationAvg.average();

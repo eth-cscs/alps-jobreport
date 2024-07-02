@@ -14,17 +14,24 @@
 #include "dataframe.hpp"
 #include "macros.hpp"
 
-std::string format_percent(unsigned int p) {
+std::string format_percent_alignment(unsigned int p)
+{
 
     std::string p_text = std::to_string(p);
     constexpr int width = 3;
 
-    if (width <= p_text.size()) {
+    if (width <= p_text.size())
+    {
         return p_text;
     }
 
     int padding = width - p_text.size();
     return std::string(padding, ' ') + p_text;
+}
+
+std::string format_percent(unsigned int avg, unsigned int min, unsigned int max)
+{
+    return format_percent_alignment(avg) + " / " + format_percent_alignment(min) + " / " + format_percent_alignment(max);
 }
 
 std::string format_bytes(long long val)
@@ -46,7 +53,7 @@ std::string format_bytes(long long val)
     return std::string(formatted_size) + " " + suffixes[suffix_index];
 }
 
-std::string format_power(double val)
+std::string format_power_unit(double val)
 {
     std::ostringstream oss;
     if (val > 1000)
@@ -60,8 +67,23 @@ std::string format_power(double val)
     return oss.str();
 }
 
+std::string format_power(double avg, double min, double max)
+{
+    if (std::isnan(avg) || std::isnan(min) || std::isnan(max))
+    {
+        return "*Failed to measure*";
+    }
+
+    return format_power_unit(avg) + " / " + format_power_unit(min) + " / " + format_power_unit(max);
+}
+
 std::string format_energy(double val)
 {
+    if (std::isnan(val))
+    {
+        return "*Failed to measure*";
+    }
+
     std::ostringstream oss;
     if (val >= 1e9) // GWh
     {
@@ -132,21 +154,18 @@ std::string format_date(long long timestamp)
 std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 {
     tabulate::Table table;
+
     table.add_row(tabulate::Table::Row_t{"Job Id", std::to_string(df.jobId)});
-    
+
     table.add_row(tabulate::Table::Row_t{"Step Id", std::to_string(df.stepId)});
-    
+
     table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
-    
-    table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.nGpus *
-                                                                                df.powerUsageAvg / 3600. *
-                                                                                (df.endTime - df.startTime) / 1e6)
-                                        });
+
+    table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
     table.add_row(tabulate::Table::Row_t{"Power Usage (avg/min/max)",
-                                         format_power(df.powerUsageAvg) + "/ " +
-                                             format_power(df.powerUsageMin) + "/ " +
-                                             format_power(df.powerUsageMax)});
+                                         format_power(df.powerUsageAvg, df.powerUsageMin, df.powerUsageMax)
+                                         });
 
     table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
 
@@ -155,14 +174,12 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
     table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
     table.add_row(tabulate::Table::Row_t{"SM Utilization % (avg/min/max)",
-                                         format_percent(df.smUtilizationAvg) + "/ " +
-                                             format_percent(df.smUtilizationMin) + "/ " +
-                                             format_percent(df.smUtilizationMax)});
+                                         format_percent(df.smUtilizationAvg, df.smUtilizationMin, df.smUtilizationMax)
+                                         });
 
     table.add_row(tabulate::Table::Row_t{"Memory Utilization % (avg/min/max)",
-                                         format_percent(df.memoryUtilizationAvg) + "/ " +
-                                             format_percent(df.memoryUtilizationMin) + "/ " +
-                                             format_percent(df.memoryUtilizationMax)});
+                                         format_percent(df.memoryUtilizationAvg, df.memoryUtilizationMin, df.memoryUtilizationMax)
+                                         });
 
     table.format()
         .border_top("-")
@@ -198,12 +215,8 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
             df.host[i],
             std::to_string(df.gpuId[i]),
             format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
-            format_percent(df.smUtilizationAvg[i]) + "/ " +
-                format_percent(df.smUtilizationMin[i]) + "/ " +
-                format_percent(df.smUtilizationMax[i]),
-            format_percent(df.memoryUtilizationAvg[i]) + "/ " +
-                format_percent(df.memoryUtilizationMin[i]) + "/ " +
-                format_percent(df.memoryUtilizationMax[i])});
+            format_percent(df.smUtilizationAvg[i], df.smUtilizationMin[i], df.smUtilizationMax[i]),
+            format_percent(df.memoryUtilizationAvg[i], df.memoryUtilizationMin[i], df.memoryUtilizationMax[i])});
     }
 
     // Enable multi-byte character support
@@ -227,7 +240,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
     table[num_rows].format().border_bottom("-").corner_bottom_left("+").corner_bottom_right("+");
 
     // Set a fixed width for each column and enable text wrapping
-    table[0][0].format().width(15);  // Host
+    table[0][0].format().width(15); // Host
     table[0][1].format().width(6);  // GPU ID
     table[0][2].format().width(18); // Elapsed time
     table[0][3].format().width(18); // Utilization
@@ -252,7 +265,7 @@ DataFrame load_dataframe(const std::filesystem::path &target)
     // Target is not a directory
     if (!std::filesystem::is_directory(target))
     {
-        //raise_error("Input must be a directory: \"" + input + "\"");
+        // raise_error("Input must be a directory: \"" + input + "\"");
         std::cout << "WARNING: Input is not a directory. Skipping: \"" << target << "\"" << std::endl;
         return df;
     }
@@ -281,20 +294,21 @@ DataFrame load_dataframe(const std::filesystem::path &target)
             {
                 df.load(ifs);
             }
-            catch(const std::exception& e)
+            catch (const std::exception &e)
             {
                 std::cerr << "Warning: error reading file. Is the file corrupted?" << std::endl
                           << "Skipping file: " + entry.path().string() << std::endl;
                 continue;
             }
-            
+
             ifs.close();
 
             found_valid_file = true;
         }
     }
-  
-    if(!found_valid_file){
+
+    if (!found_valid_file)
+    {
         raise_error("No valid CSV files found in directory: \"" + target.string() + "\"");
     }
 
@@ -313,14 +327,15 @@ void print_job_stats(const std::filesystem::path &input)
     DataFrameAvg avg = df.average();
 
     // Print summary
-    std::cout << "Summary of Job Statistics" << std::endl 
+    std::cout << "Summary of Job Statistics" << std::endl
               << "Average over all GPUs" << std::endl
               << avg << std::endl
               << "GPU Specific Values" << std::endl
               << df << std::endl;
 }
 
-void process_stats(const std::string& input){
+void process_stats(const std::string &input)
+{
     std::filesystem::path target(input);
 
     // Check if the target exists
@@ -337,8 +352,9 @@ void process_stats(const std::string& input){
 
     // Target is a directory
     // Check if target contains file
-    if(std::filesystem::exists(target / ROOT_METADATA_FILE)){
-       // Iterate over all directories in target
+    if (std::filesystem::exists(target / ROOT_METADATA_FILE))
+    {
+        // Iterate over all directories in target
         for (const auto &entry : std::filesystem::directory_iterator(target))
         {
             // Check if the entry is a directory
@@ -348,10 +364,10 @@ void process_stats(const std::string& input){
             }
         }
     }
-    else{ // The folder is a step folder already
+    else
+    { // The folder is a step folder already
         print_job_stats(target);
     }
-
 }
 
 #endif

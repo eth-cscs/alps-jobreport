@@ -6,6 +6,8 @@
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include <limits>
+#include <cmath>
 #include "utils.hpp"
 
 template <typename T>
@@ -36,7 +38,35 @@ public:
     }
 
     T average() const {
-        return std::accumulate(this->begin(), this->end(), T(0)) / this->size();
+        double sum = 0;
+        double count = 0;
+        for (const auto& elem : *this) {
+            if (!std::isnan(elem)){
+                sum += elem;
+                count += 1.0;
+            }
+        }
+        return count > 0 ? static_cast<T>(sum / count) : std::numeric_limits<T>::quiet_NaN();
+    }
+
+    T sum() const {
+        double sum = 0;
+        unsigned int count = 0;
+        for (const auto& elem : *this) {
+            if (!std::isnan(elem)){
+                sum += elem;
+                count++;
+            }
+        }
+        return count > 0 ? static_cast<T>(sum) : std::numeric_limits<T>::quiet_NaN();
+    }
+
+    T min() const {
+        return *std::min_element(this->begin(), this->end());
+    }
+
+    T max() const {
+        return *std::max_element(this->begin(), this->end());
     }
 };
 
