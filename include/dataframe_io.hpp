@@ -119,8 +119,8 @@ std::string format_date(long long timestamp)
 std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 {
     tabulate::Table table;
-    table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.n_gpus)});
-    table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.n_gpus *
+    table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
+    table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.nGpus *
                                                                                 df.powerUsageAvg / 3600. *
                                                                                 (df.endTime - df.startTime) / 1e6)
                                         });
@@ -241,6 +241,7 @@ DataFrame load_dataframe(const std::filesystem::path &target)
 
     // Target is a directory
     // Iterate over all files in the directory
+    bool found_valid_file = false;
     for (const auto &entry : std::filesystem::directory_iterator(target))
     {
         // Check if the entry is a regular file
@@ -248,13 +249,37 @@ DataFrame load_dataframe(const std::filesystem::path &target)
         {
             // Read file into DataFrame
             std::ifstream ifs(entry.path());
+
+            // Check if file was opened successfully
+            if (!ifs.is_open())
+            {
+                std::cerr << "WARNING: Could not open file. Skipping: " << entry.path() << std::endl;
+                continue;
+            }
+
             // Load the data from the file into the DataFrame
             // this operation will append the data to the existing DataFrame
-            df.load(ifs);
+            try
+            {
+                df.load(ifs);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Warning: error reading file. Is the file corrupted?" << std::endl
+                          << "Skipping file: " + entry.path().string() << std::endl;
+                continue;
+            }
+            
             ifs.close();
+
+            found_valid_file = true;
         }
     }
   
+    if(!found_valid_file){
+        raise_error("No valid CSV files found in directory: \"" + target.string() + "\"");
+    }
+
     // Sort DataFrame by GPU ID
     df.sort_by_gpu_id();
 
