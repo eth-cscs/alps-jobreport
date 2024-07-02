@@ -93,10 +93,9 @@ public:
             << "Usage: jobreport [subcommand] [options] [-- workload_command]" << std::endl
             << std::endl
             << "Subcommands:" << std::endl
-            << "  start                          Start the jobreport tool" << std::endl
-            << "  stop                           Stop the jobreport tool" << std::endl
-            << "  export                         Generate a jobreport file" << std::endl
-            << "  hook                           Generate DCGM hook script for Pyxis" << std::endl
+            //<< "  start                          Start the jobreport tool" << std::endl
+            << "  print                         Generate a jobreport file" << std::endl
+            //<< "  hook                           Generate DCGM hook script for Pyxis" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
@@ -236,12 +235,12 @@ private:
 };
 
 /*
-jobreport export: Export the stats to a report file
+jobreport print: Print the stats to a report file
     -i, --input: Input file or directory depending on the context
 */
-class ExportCmdArgs {
+class PrintCmdArgs {
 public:
-    ExportCmdArgs() {
+    PrintCmdArgs() {
         parser.add_params({
             "-i", "--input"
         });
@@ -266,14 +265,14 @@ public:
 
     void help() {
         std::cout 
-            << "Usage: jobreport export [options]" << std::endl
+            << "Usage: jobreport print [options]" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
             << "  -i, --input <path>             Specify input directory" << std::endl
             << std::endl
             << "Example:" << std::endl
-            << "  jobreport export -i ./input" << std::endl;
+            << "  jobreport print -i ./input" << std::endl;
     }
 
     void print_params() {

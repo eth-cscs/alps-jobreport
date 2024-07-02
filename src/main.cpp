@@ -20,17 +20,6 @@ void start_cmd(const StartCmdArgs &args)
     jr.start();
 }
 
-// Stop subcommand
-void stop_cmd(const StopCmdArgs &args)
-{
-    JobReport jr(
-        args.output,
-        0,                  // Dummy sampling time
-        "0:00:00"           // Dummy max time
-    );
-    jr.stop();
-}
-
 void main_cmd(const MainCmdArgs &args)
 {
     JobReport jr(
@@ -41,7 +30,7 @@ void main_cmd(const MainCmdArgs &args)
     jr.run(args.cmd);
 }
 
-void export_cmd(const ExportCmdArgs &args)
+void print_cmd(const PrintCmdArgs &args)
 {
     // Load data into DataFrame
     process_stats(args.input);
@@ -57,33 +46,13 @@ int main(int argc, char **argv)
         cmd = argv[1];
     }
     
-    if(cmd == "start") {
-        StartCmdArgs start_args;
-        if(start_args.parse(argc, argv) != Status::Success) {
-            start_args.help();
+   if (cmd == "print"){
+        PrintCmdArgs print_args;
+        if(print_args.parse(argc, argv) != Status::Success) {
+            print_args.help();
             return 1;
         }
-        start_cmd(start_args);
-    } else if (cmd == "stop") {
-        StopCmdArgs stop_args;
-        if(stop_args.parse(argc, argv) != Status::Success) {
-            stop_args.help();
-            return 1;
-        }
-        stop_cmd(stop_args);
-    } else if (cmd == "export"){
-        ExportCmdArgs export_args;
-        if(export_args.parse(argc, argv) != Status::Success) {
-            export_args.help();
-            return 1;
-        }
-        export_cmd(export_args);
-    } else if (cmd == "hook") {
-        HookCmdArgs hook_args;
-        if(hook_args.parse(argc, argv) != Status::Success) {
-            hook_args.help();
-            return 1;
-        }
+        print_cmd(print_args);
     } else {
         MainCmdArgs main_args;
         if(main_args.parse(argc, argv) != Status::Success) {

@@ -57,7 +57,7 @@ private:
 
     // DCGM Variables
     dcgmHandle_t dcgmHandle = (dcgmHandle_t)NULL;
-    dcgmGpuGrp_t group;
+    dcgmGpuGrp_t group = (dcgmGpuGrp_t)DCGM_GROUP_ALL_GPUS;
     dcgmJobInfo_t jobInfo;
     char job_name[64];
 
@@ -67,6 +67,7 @@ private:
     // Methods
     void initialize(const std::string &path, const std::string &time_string);
     void initialize_dcgm_handle();
+    void create_dcgm_group();
     void cleanup();
     void check_error(dcgmReturn_t result, const std::string &errorMsg);
     void get_job_name();
@@ -110,10 +111,10 @@ void JobReport::set_output_path(const std::string &path)
     // Create the output directory
     // This should act as mkdir -p command and not throw an error if the directory already exists,
     // if the directory is not empty or if the parent directory does not exist.
-    output_path = output_path / job.step_id;
+    output_path = output_path / ("step_" + job.step_id);
     std::filesystem::create_directories(output_path);
 
-    output_path = output_path / (job.proc_id + ".csv");
+    output_path = output_path / ("proc_" + job.proc_id + ".csv");
     output_path = std::filesystem::absolute(output_path);
     LOG(output_path);
 }
