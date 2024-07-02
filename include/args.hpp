@@ -240,12 +240,6 @@ jobreport print: Print the stats to a report file
 */
 class PrintCmdArgs {
 public:
-    PrintCmdArgs() {
-        parser.add_params({
-            "-i", "--input"
-        });
-    }
-
     Status parse(int argc, char** argv) {
         parser.parse(argc, argv);
 
@@ -254,7 +248,11 @@ public:
             return Status::Help;
         }
 
-        parser({"-i", "--input"}, input) >> input;
+        if(parser.size() != 3) {
+            return Status::InvalidValue;
+        }
+
+        parser(2) >> input;
 
         if (input.empty()) {
             return Status::MissingArgument;
@@ -265,14 +263,13 @@ public:
 
     void help() {
         std::cout 
-            << "Usage: jobreport print [options]" << std::endl
+            << "Usage: jobreport print <directory>" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -i, --input <path>             Specify input directory" << std::endl
             << std::endl
             << "Example:" << std::endl
-            << "  jobreport print -i ./input" << std::endl;
+            << "  jobreport print ./input" << std::endl;
     }
 
     void print_params() {
