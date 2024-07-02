@@ -6733,7 +6733,7 @@ public:
 
         // Remove leading whitespace from the word so the new line starts flush
         // to the left.
-        word = trim_left(word);
+        //word = trim_left(word);
       }
       result += word;
       current_line_length +=
@@ -8459,7 +8459,7 @@ inline void Printer::print_row_in_cell(std::ostream &stream, TableInternal &tabl
       stream << std::string(padding_left, ' ');
 
       // Print word-wrapped line
-      line = Format::trim(line);
+      //line = Format::trim(line);
       auto line_with_padding_size =
           get_sequence_length(line, cell.locale(), is_multi_byte_character_support_enabled) +
           padding_left + padding_right;
