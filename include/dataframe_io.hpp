@@ -12,6 +12,7 @@
 
 #include "third_party/tabulate/tabulate.hpp"
 #include "dataframe.hpp"
+#include "macros.hpp"
 
 std::string format_bytes(long long val)
 {
@@ -292,8 +293,8 @@ void process_stats(const std::string& input){
     }
 
     // Target is a directory
-    // Check if target contains file ".jr_root"
-    if(std::filesystem::exists(target / ".jr_root")){
+    // Check if target contains file
+    if(std::filesystem::exists(target / ROOT_METADATA_FILE)){
        // Iterate over all directories in target
         for (const auto &entry : std::filesystem::directory_iterator(target))
         {

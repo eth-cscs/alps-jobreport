@@ -76,7 +76,7 @@ Status SlurmJob::read_slurm_env()
     if(read_env_var(step_id, "SLURM_STEPID") != Status::Success)
         raise_error("SLURM_STEPID not found");
 
-    root = (std::stoul(proc_id) == 0);
+    root = (std::stoi(proc_id) == 0);
 
     if(read_env_var(step_gpus, "SLURM_STEP_GPUS") != Status::Success)
         print_root("Warning: unable to read SLURM_GPUS_PER_TASK\n"
