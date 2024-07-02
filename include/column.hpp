@@ -30,6 +30,8 @@ public:
         T elem;
         if (is.read(reinterpret_cast<char*>(&elem), sizeof(T))) {
             this->push_back(elem);
+        } else {
+            raise_error("Unable to read from stream. Is the file corrupted?");
         }
     }
 
