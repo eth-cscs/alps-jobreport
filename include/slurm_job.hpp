@@ -29,6 +29,7 @@ public:
     unsigned int gpus_per_task = 0;
     unsigned int n_nodes = 0;
     unsigned int n_procs = 0;
+    unsigned int time_limit = 0;
     bool root = false;
     bool node_root = false;
 
@@ -86,10 +87,16 @@ Status SlurmJob::read_slurm_env()
         print_root("Warning: unable to read SLURM_TASKS_PER_NODE\n"
                    "Consider passing --ntasks-per-node <x> in your job script.");
 
-    // if(read_env_var(gpus_per_task, "SLURM_GPUS_PER_TASK") != Status::Success)
-    //     std::cout << "Warning: unable to read SLURM_GPUS_PER_TASK" << std::endl
-    //               << "Consider passing --gpus-per-task <x> in your job script." << std::endl;
+    // Read time limit if possible
+    unsigned int start_time = 0;
+    read_env_var(start_time, "SLURM_JOB_START_TIME");
+    
+    unsigned int end_time = 0;
+    read_env_var(end_time, "SLURM_JOB_END_TIME");
+    
+    time_limit = end_time - start_time;
 
+    
     // Backup values used to determine the number of nodes and processors
     // if SLURM_TASKS_PER_NODE is not set
     read_env_var(n_nodes, "SLURM_NNODES");
