@@ -18,7 +18,9 @@
 
 struct DataFrameAvg
 {
-    unsigned int n_gpus;
+    unsigned int jobId;
+    unsigned int stepId;
+    unsigned int nGpus;
     double powerUsageMin;
     double powerUsageMax;
     double powerUsageAvg;
@@ -40,9 +42,11 @@ class DataFrame
 public:
     // Constructors
     DataFrame() = default;
-    DataFrame(const dcgmJobInfo_t &jobInfo);
+    DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job);
 
     // Columns
+    DFColumn<unsigned int> jobId;
+    DFColumn<unsigned int> stepId;
     DFColumn<std::string> host;
     DFColumn<unsigned int> gpuId;
     DFColumn<double> powerUsageMin;
@@ -69,15 +73,20 @@ public:
     void reserve(unsigned int n);
 };
 
-DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo)
+DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
 {
     unsigned int n = jobInfo.numGpus;
     reserve(n); // Reserve all columns to have n elements
 
     std::string hostName = get_hostname();
     
+    unsigned int _job_id = std::stoul(job.job_id);
+    unsigned int _step_id = std::stoul(job.step_id);
+
     for (unsigned int id = 0; id < n; ++id)
     {
+        jobId.push_back(_job_id);
+        stepId.push_back(_step_id);
         host.push_back(hostName);
         gpuId.push_back(id);
         powerUsageMin.push_back(jobInfo.gpus[id].powerUsage.minValue);
@@ -96,6 +105,8 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo)
 
 void DataFrame::reserve(unsigned int n)
 {
+    jobId.reserve(n);
+    stepId.reserve(n);
     host.reserve(n);
     gpuId.reserve(n);
     powerUsageMin.reserve(n);
@@ -127,6 +138,8 @@ void DataFrame::sort_by_gpu_id()
               });
 
     // Apply the sorted order to each DFColumn
+    jobId.permute(indices);
+    stepId.permute(indices);
     host.permute(indices);
     gpuId.permute(indices);
     powerUsageMin.permute(indices);
@@ -144,8 +157,18 @@ void DataFrame::sort_by_gpu_id()
 
 DataFrameAvg DataFrame::average()
 {
+    // Safety check
+    // This should ideally never trigger.
+    if (gpuId.empty())  
+    {
+        raise_error("Attempted to average an empty DataFrame.\n"
+                    "This is a bug and should be reported.");
+    }
+
     DataFrameAvg avg;
-    avg.n_gpus = gpuId.size();
+    avg.jobId = jobId[0];
+    avg.stepId = stepId[0];
+    avg.nGpus = gpuId.size();
     avg.powerUsageMin = powerUsageMin.average();
     avg.powerUsageMax = powerUsageMax.average();
     avg.powerUsageAvg = powerUsageAvg.average();
@@ -165,7 +188,8 @@ void DataFrame::dump(std::ofstream &os)
     size_t numRows = gpuId.size();
 
     // Write the header
-    os << "host,gpuId,"
+    os << "jobId,stepId,"
+       << "host,gpuId,"
        << "powerUsageMin,powerUsageMax,powerUsageAvg,"
        << "startTime,endTime,"
        << "smUtilizationMin,smUtilizationMax,smUtilizationAvg,"
@@ -174,7 +198,9 @@ void DataFrame::dump(std::ofstream &os)
     // Write the data
     for (size_t i = 0; i < numRows; ++i)
     {
-        os << host[i] << ','
+        os << jobId[i] << ','
+           << stepId[i] << ','
+           << host[i] << ','
            << gpuId[i] << ',' 
            << powerUsageMin[i] << ',' 
            << powerUsageMax[i] << ',' 
@@ -221,6 +247,14 @@ void DataFrame::load(std::ifstream &is)
     {
         std::stringstream ss(line);
         std::string value;
+
+        // Read each value into the respective column
+        std::getline(ss, value, ',');
+        jobId.push_back(std::stoul(value));
+
+        // Read each value into the respective column
+        std::getline(ss, value, ',');
+        stepId.push_back(std::stoul(value));
         
         // Read each value into the respective column
         std::getline(ss, value, ',');
