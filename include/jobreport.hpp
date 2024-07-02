@@ -72,9 +72,14 @@ private:
     void check_error(dcgmReturn_t result, const std::string &errorMsg);
     void get_job_name();
     void set_output_path(const std::string &path);
+    void initialize_gpu_group();
     void start_job_stats();
     void stop_job_stats();
     void write_job_stats();
+    void print_root(const std::string& msg){
+        if(job.root)
+            std::cout << msg << std::endl;
+    };
 };
 
 void JobReport::initialize(const std::string &path, const std::string &time_string)
@@ -136,7 +141,12 @@ void JobReport::get_job_name()
 
 void JobReport::cleanup()
 {
-    std::cout << "Cleaning up.\n";
+    print_root("Cleaning up...");
+
+    if(!job.step_gpus.empty()){
+        dcgmGroupDestroy(dcgmHandle, group);
+    }
+
     dcgmDisconnect(dcgmHandle);
     dcgmShutdown();
 }
@@ -155,6 +165,41 @@ void JobReport::initialize_dcgm_handle()
     LOG("Initializing DCGM handle.");
     check_error(dcgmInit(), "Error initializing DCGM engine.");
     check_error(dcgmConnect("127.0.0.1", &dcgmHandle), "Error connecting to remote DCGM engine.");
+}
+
+void JobReport::initialize_gpu_group(){
+    if(job.step_gpus.empty()){
+        if (job.root)
+        {
+            std::cout << "Unable to determine the number of GPUs per task." << std::endl
+                      << "Falling back to all GPUs on node." << std::endl;
+        }
+        group = (dcgmGpuGrp_t)DCGM_GROUP_ALL_GPUS;
+    } else {
+        // split the comma-separated string into a vector of unsigned integers
+        std::vector<unsigned int> gpuIds;
+        std::stringstream ss(job.step_gpus);
+        std::string gpuId;
+        while (std::getline(ss, gpuId, ',')) {
+            gpuIds.push_back(std::stoi(gpuId));
+        }
+        
+        // create empty DCGM GPU group
+        std::cout << "Creating a GPU group with the following GPUs: ";
+        for (auto& gpu : gpuIds) {
+            std::cout << gpu << " ";
+        }
+        std::cout << std::endl;
+
+        dcgmReturn_t result = dcgmGroupCreate(dcgmHandle, DCGM_GROUP_EMPTY, job_name, &group);
+        check_error(result, "A fatal error occurred while creating the GPU group.");
+        
+        // add the GPUs to the group
+        for (auto& gpu : gpuIds) {
+            result = dcgmGroupAddDevice(dcgmHandle, group, gpu);
+            check_error(result, "A fatal error occurred while adding a GPU to the group.");
+        }
+    }
 }
 
 void JobReport::write_job_stats(){
@@ -192,9 +237,7 @@ void JobReport::start()
         return;
     }
 
-    if(std::stoul(job.proc_id) == 0){
-        std::cout << "Starting job statistics.\n";
-    }
+    print_root("Starting job statistics.");
 
     initialize_dcgm_handle();
     start_job_stats();
@@ -207,9 +250,7 @@ void JobReport::stop()
         return;
     }
 
-    if(std::stoul(job.proc_id) == 0){
-        std::cout << "Stopping job statistics.\n";
-    }
+    print_root("Stopping job statistics.");
 
     initialize_dcgm_handle();
     stop_job_stats();
@@ -217,22 +258,27 @@ void JobReport::stop()
 
 void JobReport::run(const std::string& cmd)
 {   
-    if(job.root){
-        std::cout << "Recording job statistics..." << std::endl;
-    }
+    print_root("ALPS Jobreport - v 0.1");
+    print_root("Recording job performance statistics...");
 
     if (job.node_root)
     {
         initialize_dcgm_handle();
+        initialize_gpu_group();
         start_job_stats();
     }
 
-    system(cmd.c_str());
-
+    int result = std::system(cmd.c_str());
+   
     if (job.node_root)
     {
         stop_job_stats();
         write_job_stats();
+    }
+
+    if (result != 0) {
+        std::cerr << "Warning: workload \"" << cmd << "\" returned non-zero exit code: " << result << std::endl;
+        //raise_error("Workload returned non-zero exit code.");
     }
 }
 
