@@ -8,6 +8,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <limits.h>
+#include <filesystem>
 
 // Debugging macro
 #ifdef JOBREPORT_DEBUG
@@ -25,6 +26,16 @@ std::string get_hostname() {
         // Handle the error appropriately, here we just return an empty string
         std::cout << "WARNING: Unable to read hostname." << std::endl;
         return std::string("unknown_host");
+    }
+}
+
+std::filesystem::path get_home_directory() {
+    const char* home_dir = std::getenv("HOME");
+    if (home_dir) {
+        return std::filesystem::path(home_dir);
+    } else {
+        std::cerr << "Error: HOME environment variable is not set." << std::endl;
+        return std::filesystem::path();
     }
 }
 
