@@ -23,17 +23,11 @@ struct DataFrameAvg
     unsigned int jobId;
     unsigned int stepId;
     unsigned int nGpus;
-    double powerUsageMin;
-    double powerUsageMax;
     double powerUsageAvg;
     double energyConsumed;
     long long startTime;
     long long endTime;
-    int smUtilizationMin;
-    int smUtilizationMax;
     int smUtilizationAvg;
-    int memoryUtilizationMin;
-    int memoryUtilizationMax;
     int memoryUtilizationAvg;
 
     DataFrameAvg() = default;
@@ -190,17 +184,11 @@ DataFrameAvg DataFrame::average()
     avg.jobId = jobId[0];
     avg.stepId = stepId[0];
     avg.nGpus = gpuId.size();
-    avg.powerUsageMin = powerUsageMin.average();
-    avg.powerUsageMax = powerUsageMax.average();
     avg.powerUsageAvg = powerUsageAvg.average();
     avg.startTime = startTime.average();
     avg.endTime = endTime.average();
     avg.energyConsumed = powerUsageAvg.sum()/3600. * (avg.endTime - avg.startTime) / 1e6;
-    avg.smUtilizationMin = smUtilizationMin.average();
-    avg.smUtilizationMax = smUtilizationMax.average();
     avg.smUtilizationAvg = smUtilizationAvg.average();
-    avg.memoryUtilizationMin = memoryUtilizationMin.average();
-    avg.memoryUtilizationMax = memoryUtilizationMax.average();
     avg.memoryUtilizationAvg = memoryUtilizationAvg.average();
     return avg;
 }
