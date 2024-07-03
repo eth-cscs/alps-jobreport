@@ -169,20 +169,22 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 
     table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
+    table.add_row(tabulate::Table::Row_t{"Number of Nodes", std::to_string(df.nNodes)});
+    
     table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
 
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
     table.add_row(tabulate::Table::Row_t{"Average Power Usage",
-                                         format_power_unit(df.powerUsageAvg)
+                                         std::to_string(df.powerUsageAvg)
                                          });
 
     table.add_row(tabulate::Table::Row_t{"Average SM Utilization %",
-                                         format_percent_alignment(df.smUtilizationAvg)
+                                         std::to_string(df.smUtilizationAvg)
                                          });
 
     table.add_row(tabulate::Table::Row_t{"Average Memory Utilization %",
-                                         format_percent_alignment(df.memoryUtilizationAvg)
+                                         std::to_string(df.memoryUtilizationAvg)
                                          });
 
     table.format()
@@ -332,7 +334,6 @@ void print_job_stats(const std::filesystem::path &input)
 
     // Print summary
     std::cout << "Summary of Job Statistics" << std::endl
-              << "Average over all GPUs" << std::endl
               << avg << std::endl
               << "GPU Specific Values" << std::endl
               << df << std::endl;

@@ -22,6 +22,7 @@ struct DataFrameAvg
     std::string account;
     unsigned int jobId;
     unsigned int stepId;
+    unsigned int nNodes;
     unsigned int nGpus;
     double powerUsageAvg;
     double energyConsumed;
@@ -46,6 +47,7 @@ public:
     DFColumn<std::string> account;
     DFColumn<unsigned int> jobId;
     DFColumn<unsigned int> stepId;
+    DFColumn<unsigned int> nNodes;
     DFColumn<std::string> host;
     DFColumn<unsigned int> gpuId;
     DFColumn<double> powerUsageMin;
@@ -67,15 +69,11 @@ public:
     // Data manipulation functions
     void sort_by_gpu_id();
     DataFrameAvg average();
-
-    // Reserve memory for the DataFrame
-    void reserve(unsigned int n);
 };
 
 DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
 {
     unsigned int n = jobInfo.numGpus;
-    reserve(n); // Reserve all columns to have n elements
 
     std::string hostName = get_hostname();
     
@@ -88,6 +86,7 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
         account.push_back(job.account);
         jobId.push_back(_job_id);
         stepId.push_back(_step_id);
+        nNodes.push_back(job.n_nodes);
         host.push_back(hostName);
         gpuId.push_back(id);
         
@@ -112,27 +111,6 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
     }
 }
 
-void DataFrame::reserve(unsigned int n)
-{
-    user.reserve(n);
-    account.reserve(n);
-    jobId.reserve(n);
-    stepId.reserve(n);
-    host.reserve(n);
-    gpuId.reserve(n);
-    powerUsageMin.reserve(n);
-    powerUsageMax.reserve(n);
-    powerUsageAvg.reserve(n);
-    startTime.reserve(n);
-    endTime.reserve(n);
-    smUtilizationMin.reserve(n);
-    smUtilizationMax.reserve(n);
-    smUtilizationAvg.reserve(n);
-    memoryUtilizationMin.reserve(n);
-    memoryUtilizationMax.reserve(n);
-    memoryUtilizationAvg.reserve(n);
-}
-
 void DataFrame::sort_by_gpu_id()
 {
     // Create a vector of indices
@@ -153,6 +131,7 @@ void DataFrame::sort_by_gpu_id()
     account.permute(indices);
     jobId.permute(indices);
     stepId.permute(indices);
+    nNodes.permute(indices);
     host.permute(indices);
     gpuId.permute(indices);
     powerUsageMin.permute(indices);
@@ -183,6 +162,7 @@ DataFrameAvg DataFrame::average()
     avg.account = account[0];
     avg.jobId = jobId[0];
     avg.stepId = stepId[0];
+    avg.nNodes = nNodes[0];
     avg.nGpus = gpuId.size();
     avg.powerUsageAvg = powerUsageAvg.average();
     avg.startTime = startTime.average();
@@ -200,7 +180,7 @@ void DataFrame::dump(std::ofstream &os)
     // Write the header
     os << "jobId,stepId,"
        << "username,slurm_account,"
-       << "host,gpuId,"
+       << "n_nodes,host,gpuId,"
        << "powerUsageMin,powerUsageMax,powerUsageAvg,"
        << "startTime,endTime,"
        << "smUtilizationMin,smUtilizationMax,smUtilizationAvg,"
@@ -216,6 +196,7 @@ void DataFrame::dump(std::ofstream &os)
            << stepId[i] << ','
            << user[i] << ','
            << account[i] << ','
+           << nNodes[i] << ','
            << host[i] << ','
            << gpuId[i] << ',' 
            << powerUsageMin[i] << ',' 
@@ -276,6 +257,9 @@ void DataFrame::load(std::ifstream &is)
 
         std::getline(ss, value, ',');
         account.push_back(value);
+
+        std::getline(ss, value, ',');
+        nNodes.push_back(std::stoul(value));
 
         std::getline(ss, value, ',');
         host.push_back(value);
