@@ -2,6 +2,7 @@
 #define JOBREPORT_MACROS_HPP
 
 #define ROOT_METADATA_FILE ".cscs_jobreport_root"
+#define CONTAINER_HOOK_DEFAULT_IN_HOME ".config/.enroot/hooks.d/cscs_jobreport_dcgm_hook.sh"
 
 #define ENROOT_HOOK "#!/usr/bin/env bash\n\
 \n\

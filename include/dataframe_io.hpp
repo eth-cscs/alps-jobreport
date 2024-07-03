@@ -324,7 +324,7 @@ DataFrame load_dataframe(const std::filesystem::path &target)
     return df;
 }
 
-void print_job_stats(const std::filesystem::path &input)
+void print_job_stats(const std::filesystem::path &input, const std::string &output)
 {
     // Load the DataFrame from the input directory
     DataFrame df = load_dataframe(input);
@@ -333,10 +333,32 @@ void print_job_stats(const std::filesystem::path &input)
     DataFrameAvg avg = df.average();
 
     // Print summary
-    std::cout << "Summary of Job Statistics" << std::endl
+    if(output.empty())
+    {
+        std::cout << "Summary of Job Statistics" << std::endl
               << avg << std::endl
               << "GPU Specific Values" << std::endl
-              << df << std::endl;
+              << df << std::endl;    
+    } else {
+        // Check if the output file already exists
+        if (std::filesystem::exists(output))
+        {
+            raise_error("Error: Output file already exists: \"" + output + "\"");
+        }
+
+        std::ofstream ofs(output);
+        if (!ofs.is_open())
+        {
+            raise_error("Error: Unable to open output file: \"" + output + "\"");
+        }
+        ofs << "Summary of Job Statistics" << std::endl
+            << avg << std::endl
+            << "GPU Specific Values" << std::endl
+            << df << std::endl;
+        ofs.close();
+
+        std::cout << "Report written to: \"" << output  << "\"" << std::endl;
+    }
 }
 
 bool natural_order_comparator(const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) {
@@ -362,7 +384,7 @@ bool natural_order_comparator(const std::filesystem::directory_entry& a, const s
     return filename_a < filename_b;
 }
 
-void process_stats(const std::string &input)
+void process_stats(const std::string &input, const std::string &output)
 {
     std::filesystem::path target(input);
 
@@ -395,10 +417,10 @@ void process_stats(const std::string &input)
 
         // Iterate over the sorted entries
         for (const auto &entry : entries) {
-            print_job_stats(entry.path());
+            print_job_stats(entry.path(), output);
         }
     } else { // The folder is a step folder already
-        print_job_stats(target);
+        print_job_stats(target, output);
     }
 }
 

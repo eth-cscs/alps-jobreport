@@ -4,7 +4,8 @@
 #include <memory>
 #include <filesystem>
 
-#include "args.hpp"     // Argument parsers
+#include "macros.hpp"
+#include "args.hpp" // Argument parsers
 #include "jobreport.hpp"
 #include "dataframe.hpp"
 #include "dataframe_io.hpp"
@@ -14,24 +15,26 @@ void main_cmd(const MainCmdArgs &args)
     JobReport jr(
         args.output,
         args.sampling_time,
-        args.max_time
-    );
+        args.max_time);
     jr.run(args.cmd);
 }
 
 void print_cmd(const PrintCmdArgs &args)
 {
     // Load data into DataFrame
-    process_stats(args.input);
+    process_stats(args.input, args.output);
 }
 
 void hook_cmd(const HookCmdArgs &args)
 {
     std::filesystem::path output;
 
-    if(args.output.empty()) {
+    if (args.output.empty())
+    {
         output = get_home_directory() / CONTAINER_HOOK_DEFAULT_IN_HOME;
-    } else {
+    }
+    else
+    {
         output = args.output;
     }
 
@@ -45,9 +48,9 @@ void hook_cmd(const HookCmdArgs &args)
     std::filesystem::path dir_path = std::filesystem::path(output).parent_path();
     if (!dir_path.empty() && !std::filesystem::exists(dir_path))
     {
-        std::error_code ec; // To capture any potential error
-        if (!std::filesystem::create_directories(dir_path, ec))
-        {
+        try{
+            std::filesystem::create_directories(dir_path);
+        } catch (std::exception &e) {
             raise_error("Error: Unable to create directories: \"" + dir_path.string() + "\"");
         }
     }
@@ -64,26 +67,20 @@ void hook_cmd(const HookCmdArgs &args)
     ofs.close();
 
     // Set the file as executable
-    std::error_code ec; // Declare a local error_code variable
-    std::filesystem::permissions(output,
-        std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec | std::filesystem::perms::others_exec,
-        std::filesystem::perm_options::add, ec);
-        
-    if(ec){
+    try {
+        std::filesystem::permissions(output,
+                                    std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec | std::filesystem::perms::others_exec,
+                                    std::filesystem::perm_options::add);
+    } catch (std::exception &e) {
         raise_error("Error: Unable to set executable permissions on file: \"" + output.string() + "\"");
     }
 
-    std::cout 
+    std::cout
         << "Add the following to your container .toml file:" << std::endl
-	<< std::endl
-	<< "[annotations]" << std::endl
-        << "com.hooks.dcgm.enabled = \"true\"" << std::endl
-	<< "[env]" << std::endl
-        << "MELLANOX_VISIBLE_DEVICES = \"none\"" << std::endl
+        << std::endl
+        << "[env]" << std::endl
         << "ENROOT_DCGM_HOOK = \"true\"" << std::endl
         << std::endl;
-
-
 }
 
 int main(int argc, char **argv)
@@ -94,35 +91,46 @@ int main(int argc, char **argv)
     {
         cmd = argv[1];
     }
-    
-   if (cmd == "print"){
+
+    if (cmd == "print")
+    {
         PrintCmdArgs print_args;
-        if(print_args.parse(argc, argv) != Status::Success) {
+        if (print_args.parse(argc, argv) != Status::Success)
+        {
             print_args.help();
             return 1;
         }
         print_cmd(print_args);
-    } else if (cmd == "container-hook"){
+    }
+    else if (cmd == "container-hook")
+    {
         HookCmdArgs container_hook_args;
-        if(container_hook_args.parse(argc, argv) != Status::Success) {
+        if (container_hook_args.parse(argc, argv) != Status::Success)
+        {
             container_hook_args.help();
             return 1;
         }
         hook_cmd(container_hook_args);
-   } else {
+    }
+    else
+    {
         MainCmdArgs main_args;
-        
-        if(main_args.parse(argc, argv) != Status::Success) {
+
+        if (main_args.parse(argc, argv) != Status::Success)
+        {
             main_args.help();
             return 1;
         }
 
-        if(main_args.version){
+        if (main_args.version)
+        {
             std::cout << "ALPS Jobreport - v0.1" << std::endl;
-        } else {
+        }
+        else
+        {
             main_cmd(main_args);
         }
     }
-    
+
     return 0;
 }

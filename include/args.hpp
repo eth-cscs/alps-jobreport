@@ -1,10 +1,6 @@
 #ifndef JOBREPORT_ARGS_HPP
 #define JOBREPORT_ARGS_HPP
 
-#define JOB_REPORT_VERSION "v1.0"
-
-#define CONTAINER_HOOK_DEFAULT_IN_HOME ".config/.enroot/hooks.d/cscs_jobreport_dcgm_hook.sh"
-
 #include <iostream>
 #include <string>
 #include "status.hpp"
@@ -225,11 +221,18 @@ public:
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -o, --output <path>            Output path for the hook file (default: $HOME/" << CONTAINER_HOOK_DEFAULT_IN_HOME << ")" << std::endl
+            << "  -o, --output <path>            Output path for the hook file" << std::endl
+            << "                                 (default: $HOME/" << CONTAINER_HOOK_DEFAULT_IN_HOME << ")" << std::endl
             << std::endl
             << "Example:" << std::endl
             << "  jobreport container-hook" << std::endl
-            << "  jobreport container-hook -o " << std::endl;
+            << "  jobreport container-hook -o hook.sh" << std::endl
+            << std::endl
+            << "To activate the hook, add the following to your container .toml file:" << std::endl
+            << std::endl
+            << "[env]" << std::endl
+            << "ENROOT_DCGM_HOOK = \"true\"" << std::endl
+            << std::endl;
     }
 
     std::string output = "";
