@@ -175,16 +175,16 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
-    table.add_row(tabulate::Table::Row_t{"Average Power Usage",
-                                         std::to_string(df.powerUsageAvg)
+    table.add_row(tabulate::Table::Row_t{"Total Power Usage",
+                                         format_power_unit(df.powerUsageAvg)
                                          });
 
-    table.add_row(tabulate::Table::Row_t{"Average SM Utilization %",
-                                         std::to_string(df.smUtilizationAvg)
+    table.add_row(tabulate::Table::Row_t{"Average SM Utilization",
+                                         std::to_string(df.smUtilizationAvg) + "%"
                                          });
 
-    table.add_row(tabulate::Table::Row_t{"Average Memory Utilization %",
-                                         std::to_string(df.memoryUtilizationAvg)
+    table.add_row(tabulate::Table::Row_t{"Average Memory Utilization",
+                                         std::to_string(df.memoryUtilizationAvg) + "%"
                                          });
 
     table.format()

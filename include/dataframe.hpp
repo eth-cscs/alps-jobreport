@@ -164,10 +164,10 @@ DataFrameAvg DataFrame::average()
     avg.stepId = stepId[0];
     avg.nNodes = nNodes[0];
     avg.nGpus = gpuId.size();
-    avg.powerUsageAvg = powerUsageAvg.average();
+    avg.powerUsageAvg = powerUsageAvg.sum();
     avg.startTime = startTime.average();
     avg.endTime = endTime.average();
-    avg.energyConsumed = powerUsageAvg.sum()/3600. * (avg.endTime - avg.startTime) / 1e6;
+    avg.energyConsumed = avg.powerUsageAvg/3600. * (avg.endTime - avg.startTime) / 1e6;
     avg.smUtilizationAvg = smUtilizationAvg.average();
     avg.memoryUtilizationAvg = memoryUtilizationAvg.average();
     return avg;
