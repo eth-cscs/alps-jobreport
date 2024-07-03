@@ -98,10 +98,14 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
         gpuId.push_back(id);
         
         // This is a hack to handle the case where the power usage is not available
+        constexpr double thrsh = 1.5e3;
         double tmp;
-        powerUsageMin.push_back(tmp = jobInfo.gpus[id].powerUsage.minValue < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
-        powerUsageMax.push_back(tmp = jobInfo.gpus[id].powerUsage.maxValue < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
-        powerUsageAvg.push_back(tmp = jobInfo.gpus[id].powerUsage.average < 1.5e3 ? tmp : std::numeric_limits<double>::quiet_NaN());
+        tmp = jobInfo.gpus[id].powerUsage.minValue;
+        powerUsageMin.push_back(tmp < thrsh ? tmp : std::numeric_limits<double>::quiet_NaN());
+        tmp = jobInfo.gpus[id].powerUsage.maxValue;
+        powerUsageMax.push_back(tmp < thrsh ? tmp : std::numeric_limits<double>::quiet_NaN());
+        tmp = jobInfo.gpus[id].powerUsage.average;
+        powerUsageAvg.push_back(tmp < thrsh ? tmp : std::numeric_limits<double>::quiet_NaN());
 
         startTime.push_back(jobInfo.gpus[id].startTime);
         endTime.push_back(jobInfo.gpus[id].endTime);
