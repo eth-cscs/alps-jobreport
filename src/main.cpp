@@ -98,11 +98,17 @@ int main(int argc, char **argv)
         hook_cmd(container_hook_args);
    } else {
         MainCmdArgs main_args;
+        
         if(main_args.parse(argc, argv) != Status::Success) {
             main_args.help();
             return 1;
         }
-        main_cmd(main_args);
+
+        if(main_args.version){
+            std::cout << "ALPS Jobreport - v0.1" << std::endl;
+        } else {
+            main_cmd(main_args);
+        }
     }
     
     return 0;
