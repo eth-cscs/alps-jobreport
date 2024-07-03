@@ -175,7 +175,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
-    table.add_row(tabulate::Table::Row_t{"Total Power Usage",
+    table.add_row(tabulate::Table::Row_t{"Average Power Usage",
                                          format_power_unit(df.powerUsageAvg)
                                          });
 
