@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cmath>
-
+#include <regex>
 #include "third_party/tabulate/tabulate.hpp"
 #include "dataframe.hpp"
 #include "macros.hpp"
@@ -339,6 +339,29 @@ void print_job_stats(const std::filesystem::path &input)
               << df << std::endl;
 }
 
+bool natural_order_comparator(const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) {
+    std::regex regex("step_(\\d+)");
+    std::smatch match_a, match_b;
+
+    std::string filename_a = a.path().filename().string();
+    std::string filename_b = b.path().filename().string();
+
+    bool is_a_match = std::regex_search(filename_a, match_a, regex);
+    bool is_b_match = std::regex_search(filename_b, match_b, regex);
+
+    if (is_a_match && is_b_match) {
+        int num_a = std::stoi(match_a[1].str());
+        int num_b = std::stoi(match_b[1].str());
+        return num_a < num_b;
+    }
+    // If only one matches the schema, that one comes first
+    if (is_a_match != is_b_match) {
+        return is_a_match;
+    }
+    // If neither matches, sort lexicographically
+    return filename_a < filename_b;
+}
+
 void process_stats(const std::string &input)
 {
     std::filesystem::path target(input);
@@ -357,20 +380,24 @@ void process_stats(const std::string &input)
 
     // Target is a directory
     // Check if target contains file
-    if (std::filesystem::exists(target / ROOT_METADATA_FILE))
-    {
-        // Iterate over all directories in target
-        for (const auto &entry : std::filesystem::directory_iterator(target))
-        {
+    if (std::filesystem::exists(target / ROOT_METADATA_FILE)) {
+        // Collect all directory entries into a vector
+        std::vector<std::filesystem::directory_entry> entries;
+        for (const auto &entry : std::filesystem::directory_iterator(target)) {
             // Check if the entry is a directory
-            if (entry.is_directory())
-            {
-                print_job_stats(entry.path());
+            if (entry.is_directory()) {
+                entries.push_back(entry);
             }
         }
-    }
-    else
-    { // The folder is a step folder already
+
+        // Sort the entries by natural numerical order
+        std::sort(entries.begin(), entries.end(), natural_order_comparator);
+
+        // Iterate over the sorted entries
+        for (const auto &entry : entries) {
+            print_job_stats(entry.path());
+        }
+    } else { // The folder is a step folder already
         print_job_stats(target);
     }
 }
