@@ -58,11 +58,11 @@ std::string format_power_unit(double val)
     std::ostringstream oss;
     if (val > 1000)
     {
-        oss << std::fixed << std::setprecision(1) << (val / 1000) << "kW";
+        oss << std::fixed << std::setprecision(1) << (val / 1000) << " kW";
     }
     else
     {
-        oss << std::fixed << std::setprecision(1) << val << "W";
+        oss << std::fixed << std::setprecision(1) << val << " W";
     }
     return oss.str();
 }
@@ -87,19 +87,19 @@ std::string format_energy(double val)
     std::ostringstream oss;
     if (val >= 1e9) // GWh
     {
-        oss << std::fixed << std::setprecision(1) << (val / 1e9) << "GWh";
+        oss << std::fixed << std::setprecision(1) << (val / 1e9) << " GWh";
     }
     else if (val >= 1e6) // MWh
     {
-        oss << std::fixed << std::setprecision(1) << (val / 1e6) << "MWh";
+        oss << std::fixed << std::setprecision(1) << (val / 1e6) << " MWh";
     }
     else if (val >= 1000) // kWh
     {
-        oss << std::fixed << std::setprecision(1) << (val / 1000) << "kWh";
+        oss << std::fixed << std::setprecision(1) << (val / 1000) << " kWh";
     }
     else
     {
-        oss << std::fixed << std::setprecision(1) << val << "Wh";
+        oss << std::fixed << std::setprecision(1) << val << " Wh";
     }
     return oss.str();
 }
