@@ -1,3 +1,4 @@
+#include <locale>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -91,6 +92,24 @@ int main(int argc, char **argv)
     {
         cmd = argv[1];
     }
+
+
+    //
+    // ugly fix for when a user has a bad/strange/unsupported locale.
+    // A bad locale causes a segfault in tabulate.
+    // This has happened when a user sent their local locale via ssh 
+    // to our machines that didn't support it.
+    //
+    try 
+    {
+        std::locale::global(std::locale(""));
+    }
+    catch (...)
+    {
+    	setenv("LC_CTYPE", "C", 1);
+        std::locale::global(std::locale(""));
+    }
+
 
     if (cmd == "print")
     {
