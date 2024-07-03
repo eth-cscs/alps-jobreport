@@ -3,6 +3,8 @@
 
 #define JOB_REPORT_VERSION "v1.0"
 
+#define CONTAINER_HOOK_DEFAULT_IN_HOME ".config/.enroot/hooks.d/cscs_jobreport_dcgm_hook.sh"
+
 #include <iostream>
 #include <string>
 #include "status.hpp"
@@ -88,7 +90,7 @@ public:
             return Status::MissingNonArguments;
         }
         
-        if (sampling_time < 0) {
+        if (sampling_time <= 0) {
             std::cout << "Invalid value for -u, --sampling_time" << std::endl
                       << "Expected a positive value, got: \"" << sampling_time << "\"" << std::endl;
             return Status::InvalidValue;
@@ -100,28 +102,37 @@ public:
     void help() {
         std::cout 
             << "Usage: jobreport [-v -h] [subcommand] -- COMMAND" << std::endl
+            << std::endl
             << "Options:" << std::endl
             << "  -h, --help                        Show this help message" << std::endl
             << "  -v, --version                     Show version information" << std::endl
+            << std::endl
             << "Subcommands:" << std::endl
-            << "  monitor                           Monitor the performance metrics for a job" << std::endl
+            << "  monitor                           Monitor the performance metrics for a job. (Default)" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
             << "    -o, --output <path>             Specify output directory (default: ./jobreport_<SLURM_JOB_ID>)" << std::endl
-            << "    -u, --sampling_time <seconds>   Set the sampling time in seconds (default: automatically determined)" << std::endl
-            << "    -t, --max_time <time>           Set the maximum time (format: DD-HH:MM:SS, default: 24:00:00)" << std::endl
+            << "    -u, --sampling_time <seconds>   Set the time between samples (default: automatically determined)" << std::endl
+            << "    -t, --max_time <time>           Set the maximum monitoring time (format: DD-HH:MM:SS, default: 24:00:00)" << std::endl
             << "  print                             Print a job report" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
             << "    -o, --output <path>             Output path for the report file" << std::endl
             << "  container-hook                    Write enroot hook for jobreport" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
             << "    -o, --output <path>             Output path for the enroot hook file" << std::endl
+	    << "                                    (default: $HOME/" << CONTAINER_HOOK_DEFAULT_IN_HOME << ")" << std::endl
+            << std::endl
             << "Arguments:" << std::endl
             << "  COMMAND                           The command to run as the workload" << std::endl
+            << std::endl
             << "Examples:" << std::endl
             << "  jobreport -- sleep 5" << std::endl
-            << "  jobreport monitor -- sleep 5" << std::endl
+            << "  jobreport monitor -o report -- sleep 5" << std::endl
             << "  jobreport print ./report" << std::endl
-            << "  jobreport container-hook" << std::endl;
+            << "  jobreport container-hook" << std::endl
+            << std::endl
+            << "Further documentation can be found on the CSCS Knowledge Base: https://docs.cscs.ch" << std::endl
+            << "Open bug reports with the CSCS Service Desk:                   https://support.cscs.ch" << std::endl
+            << std::endl;
     }
 
     // Public variables used to store the parsed arguments with default values
@@ -214,7 +225,7 @@ public:
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -o, --output <path>            Output path for the hook file (default: $HOME/.config/enroot/hooks.d/dcgm_hook.sh)" << std::endl
+            << "  -o, --output <path>            Output path for the hook file (default: $HOME/" << CONTAINER_HOOK_DEFAULT_IN_HOME << ")" << std::endl
             << std::endl
             << "Example:" << std::endl
             << "  jobreport container-hook" << std::endl

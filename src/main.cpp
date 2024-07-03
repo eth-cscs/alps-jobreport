@@ -30,7 +30,7 @@ void hook_cmd(const HookCmdArgs &args)
     std::filesystem::path output;
 
     if(args.output.empty()) {
-        output = get_home_directory() / ".config/.enroot/hooks.d/dcgm_hook.sh";
+        output = get_home_directory() / CONTAINER_HOOK_DEFAULT_IN_HOME;
     } else {
         output = args.output;
     }
@@ -59,6 +59,7 @@ void hook_cmd(const HookCmdArgs &args)
         raise_error("Error: Unable to open output file: \"" + output.string() + "\"");
     }
 
+    std::cout << "Writing enroot hook to " << output << std::endl;
     ofs << ENROOT_HOOK;
     ofs.close();
 
@@ -71,6 +72,18 @@ void hook_cmd(const HookCmdArgs &args)
     if(ec){
         raise_error("Error: Unable to set executable permissions on file: \"" + output.string() + "\"");
     }
+
+    std::cout 
+        << "Add the following to your container .toml file:" << std::endl
+	<< std::endl
+	<< "[annotations]" << std::endl
+        << "com.hooks.dcgm.enabled = \"true\"" << std::endl
+	<< "[env]" << std::endl
+        << "MELLANOX_VISIBLE_DEVICES = \"none\"" << std::endl
+        << "ENROOT_DCGM_HOOK = \"true\"" << std::endl
+        << std::endl;
+
+
 }
 
 int main(int argc, char **argv)
