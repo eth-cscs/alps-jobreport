@@ -73,14 +73,18 @@ public:
             return Status::Help;
         }
 
-        // Read optional arguments
-        parser({"-v", "--version"}, version) >> version;
+        // Check if -v or --version is present
+        if(parser[{"-v", "--version"}]){
+            version = true;
+            return Status::Success;
+        }
+
         parser({"-o", "--output"}, output) >> output;
         parser({"-u", "--sampling_time"}, sampling_time) >> sampling_time;
         parser({"-t", "--max_time"}, max_time) >> max_time;
 
         // This is required for the main command
-        if(cmd.empty() && !version) {
+        if(cmd.empty()) {
             return Status::MissingNonArguments;
         }
         
