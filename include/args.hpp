@@ -230,8 +230,8 @@ public:
             << std::endl
             << "To activate the hook, add the following to your container .toml file:" << std::endl
             << std::endl
-            << "[env]" << std::endl
-            << "ENROOT_DCGM_HOOK = \"true\"" << std::endl
+            << "[annotations]" << std::endl
+            << "com.hooks.dcgm.enabled = \"true\"" << std::endl
             << std::endl;
     }
 

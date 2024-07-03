@@ -15,7 +15,7 @@ source \"${ENROOT_LIBRARY_PATH}/common.sh\"\n\
 \n\
 common::checkcmd grep sed ldd ldconfig\n\
 \n\
-if [ -z \"${ENROOT_DCGM_HOOK:-}\" ] || [ \"${OCI_ANNOTATION_com__hooks__dcgm__enabled:-}\" != \"true\" ]; then\n\
+if [ \"${OCI_ANNOTATION_com__hooks__dcgm__enabled:-}\" != \"true\" ]; then\n\
     exit 0\n\
 fi\n\
 \n\
