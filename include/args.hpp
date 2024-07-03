@@ -86,7 +86,7 @@ public:
             return Status::MissingNonArguments;
         }
         
-        if (sampling_time <= 0) {
+        if (sampling_time < 0) {
             std::cout << "Invalid value for -u, --sampling_time" << std::endl
                       << "Expected a positive value, got: \"" << sampling_time << "\"" << std::endl;
             return Status::InvalidValue;
