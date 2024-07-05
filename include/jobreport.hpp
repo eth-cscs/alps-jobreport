@@ -218,31 +218,12 @@ void JobReport::initialize_gpu_group()
                       << "Falling back to all GPUs on node." << std::endl;
         }
         group = (dcgmGpuGrp_t)DCGM_GROUP_ALL_GPUS;
-    }
-    else
-    {
-        // split the comma-separated string into a vector of unsigned integers
-        std::vector<unsigned int> gpuIds;
-        std::stringstream ss(job.step_gpus);
-        std::string gpuId;
-        while (std::getline(ss, gpuId, ','))
-        {
-            gpuIds.push_back(std::stoi(gpuId));
-        }
-
-        // create empty DCGM GPU group
-        std::cout << "Creating a GPU group with the following GPUs: ";
-        for (auto &gpu : gpuIds)
-        {
-            std::cout << gpu << " ";
-        }
-        std::cout << std::endl;
-
+    } else {
         dcgmReturn_t result = dcgmGroupCreate(dcgmHandle, DCGM_GROUP_EMPTY, job_name, &group);
         check_error(result, "A fatal error occurred while creating the GPU group.");
 
         // add the GPUs to the group
-        for (auto &gpu : gpuIds)
+        for (auto &gpu : job.step_gpus)
         {
             result = dcgmGroupAddDevice(dcgmHandle, group, gpu);
             check_error(result, "A fatal error occurred while adding a GPU to the group.");

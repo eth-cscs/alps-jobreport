@@ -25,7 +25,7 @@ public:
     std::string job_id = "";
     std::string proc_id = "";
     std::string step_id = "";
-    std::string step_gpus = "";
+    std::vector<unsigned int> step_gpus;
 
     unsigned int n_tasks_per_node = 0;
     unsigned int gpus_per_task = 0;
@@ -81,9 +81,19 @@ Status SlurmJob::read_slurm_env()
 
     root = (std::stoi(proc_id) == 0);
 
-    if(read_env_var(step_gpus, "SLURM_STEP_GPUS") != Status::Success)
+    std::string step_gpus_str = "";
+    if(read_env_var(step_gpus_str, "SLURM_STEP_GPUS") != Status::Success) {
         print_root("Warning: unable to read SLURM_GPUS_PER_TASK\n"
                    "Consider passing --gpus-per-task <x> in your job script.");
+    } else {
+        // split the comma-separated string into a vector of unsigned integers
+        std::stringstream ss(step_gpus_str);
+        std::string gpuId;
+        while (std::getline(ss, gpuId, ','))
+        {
+            step_gpus.push_back(std::stoi(gpuId));
+        }
+    }
     
     if(read_env_var(n_tasks_per_node, "SLURM_TASKS_PER_NODE") != Status::Success)
         print_root("Warning: unable to read SLURM_TASKS_PER_NODE\n"

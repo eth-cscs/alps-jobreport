@@ -88,7 +88,7 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
         stepId.push_back(_step_id);
         nNodes.push_back(job.n_nodes);
         host.push_back(hostName);
-        gpuId.push_back(id);
+        gpuId.push_back(job.step_gpus.empty() ? id : job.step_gpus[id]);
         
         // This is a hack to handle the case where the power usage is not available
         constexpr double thrsh = 1.5e3;
