@@ -7,18 +7,17 @@
 #include "third_party/argh/argh.hpp"
 #include "utils.hpp"
 
-// This function looks for the '--' delimiter and extracts
-// the following string as a non-argument
 std::string extract_non_arguments(int &argc, char **argv) {
     std::string non_arguments = "";
-    int n_non_arguments = 0;
     bool found_delimiter = false;
-    for (int i = argc - 1; i > 0; --i) {
+    int delimiter_index = 0;
+
+    // Find the delimiter from left to right
+    for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--") {
             found_delimiter = true;
+            delimiter_index = i;
             break;
-        } else {
-            ++n_non_arguments;
         }
     }
 
@@ -27,7 +26,7 @@ std::string extract_non_arguments(int &argc, char **argv) {
     }
 
     // Concatenate non-arguments
-    for (int i = argc - n_non_arguments; i < argc; ++i) {
+    for (int i = delimiter_index + 1; i < argc; ++i) {
         non_arguments += argv[i];
         if (i < argc - 1) {
             non_arguments += " ";
@@ -35,8 +34,7 @@ std::string extract_non_arguments(int &argc, char **argv) {
     }
 
     // Update argc
-    argc -= (n_non_arguments + 1); // +1 for the '--' delimiter
-
+    argc = delimiter_index; // argc is now the count of arguments before the '--' delimiter
     return non_arguments;
 }
 
