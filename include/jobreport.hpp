@@ -175,7 +175,14 @@ void JobReport::compute_time_params(const std::string &time_string)
     // If the sampling time is not set, set it such that we have at least 100 samples
     if (sampling_time == 0)
     {
-        sampling_time = max_runtime * 10000; // max_runtime/100 in usec
+        if (max_runtime < 10) 
+        {
+            sampling_time = max_runtime * 10000; // max_runtime/100 in usec
+        }
+	else
+        {
+            sampling_time = 100000;
+        }
     }
 }
 
