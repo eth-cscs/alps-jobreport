@@ -16,6 +16,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
+# add_definitions(-DJOBREPORT_DEBUG)
 # Add the executable
 add_executable(jobreport ./src/main.cpp)
 

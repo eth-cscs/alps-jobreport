@@ -104,6 +104,8 @@ int parse_time(const std::string &time_str)
         seconds = time_components[2];
     }
 
+    // LOG("time components: " << n << " " << days << " " << hours << " " << minutes << " " << seconds);
+
     // Calculate the total time in seconds
     return (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
 }
