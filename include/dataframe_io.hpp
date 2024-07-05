@@ -77,6 +77,16 @@ std::string format_power(double avg, double min, double max)
     return format_power_unit(avg) + " / " + format_power_unit(min) + " / " + format_power_unit(max);
 }
 
+std::string format_power(double avg)
+{
+    if (std::isnan(avg))
+    {
+        return "*Failed to measure*";
+    }
+
+    return format_power_unit(avg);
+}
+
 std::string format_energy(double val)
 {
     if (std::isnan(val))
@@ -175,16 +185,14 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 
     table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
-    table.add_row(tabulate::Table::Row_t{"Average Power Usage",
-                                         format_power_unit(df.powerUsageAvg)
-                                         });
+    table.add_row(tabulate::Table::Row_t{"Average Power Usage", format_power(df.powerUsageAvg) });
 
     table.add_row(tabulate::Table::Row_t{"Average SM Utilization",
-                                         std::to_string(df.smUtilizationAvg) + "%"
+                                         std::to_string(df.smUtilizationAvg) + " %"
                                          });
 
     table.add_row(tabulate::Table::Row_t{"Average Memory Utilization",
-                                         std::to_string(df.memoryUtilizationAvg) + "%"
+                                         std::to_string(df.memoryUtilizationAvg) + " %"
                                          });
 
     table.format()
