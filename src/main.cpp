@@ -16,7 +16,9 @@ void main_cmd(const MainCmdArgs &args)
     JobReport jr(
         args.output,
         args.sampling_time,
-        args.max_time);
+        args.max_time,
+        args.ignore_gpu_binding
+        );
     jr.run(args.cmd);
 }
 
@@ -100,16 +102,15 @@ int main(int argc, char **argv)
     // This has happened when a user sent their local locale via ssh 
     // to our machines that didn't support it.
     //
-    try 
-    {
-        std::locale::global(std::locale(""));
-    }
-    catch (...)
-    {
-    	setenv("LC_CTYPE", "C", 1);
-        std::locale::global(std::locale(""));
-    }
-
+    // try 
+    // {
+    //     std::locale::global(std::locale(""));
+    // }
+    // catch (...)
+    // {
+    // 	setenv("LC_CTYPE", "C", 1);
+    //     std::locale::global(std::locale(""));
+    // }
 
     if (cmd == "print")
     {

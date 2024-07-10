@@ -163,107 +163,117 @@ std::string format_date(long long timestamp)
 // Output stream operator for DataFrameAvg
 std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
 {
-    tabulate::Table table;
+    try{
+        tabulate::Table table;
 
-    table.add_row(tabulate::Table::Row_t{"Job Id", std::to_string(df.jobId)});
+        table.add_row(tabulate::Table::Row_t{"Job Id", std::to_string(df.jobId)});
 
-    table.add_row(tabulate::Table::Row_t{"Step Id", std::to_string(df.stepId)});
+        table.add_row(tabulate::Table::Row_t{"Step Id", std::to_string(df.stepId)});
 
-    table.add_row(tabulate::Table::Row_t{"User", df.user});
+        table.add_row(tabulate::Table::Row_t{"User", df.user});
 
-    table.add_row(tabulate::Table::Row_t{"SLURM Account", df.account});
+        table.add_row(tabulate::Table::Row_t{"SLURM Account", df.account});
 
-    table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
+        table.add_row(tabulate::Table::Row_t{"Start Time", format_date(df.startTime)});
 
-    table.add_row(tabulate::Table::Row_t{"End Time", format_date(df.endTime)});
+        table.add_row(tabulate::Table::Row_t{"End Time", format_date(df.endTime)});
 
-    table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
+        table.add_row(tabulate::Table::Row_t{"Elapsed Time", format_elapsed((df.endTime - df.startTime) / 1000000)}); // Convert us to s
 
-    table.add_row(tabulate::Table::Row_t{"Number of Nodes", std::to_string(df.nNodes)});
-    
-    table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
+        table.add_row(tabulate::Table::Row_t{"Number of Nodes", std::to_string(df.nNodes)});
+        
+        table.add_row(tabulate::Table::Row_t{"Number of GPUs", std::to_string(df.nGpus)});
 
-    table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
+        table.add_row(tabulate::Table::Row_t{"Total Energy Consumed", format_energy(df.energyConsumed)});
 
-    table.add_row(tabulate::Table::Row_t{"Average Power Usage", format_power(df.powerUsageAvg) });
+        table.add_row(tabulate::Table::Row_t{"Average Power Usage", format_power(df.powerUsageAvg) });
 
-    table.add_row(tabulate::Table::Row_t{"Average SM Utilization",
-                                         std::to_string(df.smUtilizationAvg) + " %"
-                                         });
+        table.add_row(tabulate::Table::Row_t{"Average SM Utilization",
+                                            std::to_string(df.smUtilizationAvg) + " %"
+                                            });
 
-    table.add_row(tabulate::Table::Row_t{"Average Memory Utilization",
-                                         std::to_string(df.memoryUtilizationAvg) + " %"
-                                         });
+        table.add_row(tabulate::Table::Row_t{"Average Memory Utilization",
+                                            std::to_string(df.memoryUtilizationAvg) + " %"
+                                            });
 
-    table.format()
-        .border_top("-")
-        .border_bottom("-")
-        .border_left("|")
-        .border_right("|")
-        .corner("+");
+        table.format()
+            .border_top("-")
+            .border_bottom("-")
+            .border_left("|")
+            .border_right("|")
+            .corner("+");
 
-    // Set a fixed width for each header column and enable text wrapping
-    table[0].format().width(41);
+        // Set a fixed width for each header column and enable text wrapping
+        table[0].format().width(41);
 
-    os << table << std::endl;
+        os << table << std::endl;
 
-    return os;
+        return os;
+    } catch (const std::exception &e) {
+        raise_error("Error: " + std::string(e.what()));
+        return os; // Suppress warning
+    }
 }
 
 // Output stream operator for DataFrame
 std::ostream &operator<<(std::ostream &os, const DataFrame &df)
 {
-    tabulate::Table table;
+    try{
+        tabulate::Table table;
 
-    // Add header row
-    table.add_row({"Host",
-                   "GPU",
-                   "Elapsed",
-                   "SM Utilization %\n(avg/min/max)",
-                   "Memory Utilization %\n(avg/min/max)"});
+        // Add header row
+        table.add_row({"Host",
+                    "GPU",
+                    "Elapsed",
+                    "SM Utilization %\n(avg/min/max)",
+                    "Memory Utilization %\n(avg/min/max)"});
 
-    size_t num_rows = df.gpuId.size();
-    for (size_t i = 0; i < num_rows; ++i)
-    {
-        table.add_row(tabulate::Table::Row_t{
-            df.host[i],
-            std::to_string(df.gpuId[i]),
-            format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
-            format_percent(df.smUtilizationAvg[i], df.smUtilizationMin[i], df.smUtilizationMax[i]),
-            format_percent(df.memoryUtilizationAvg[i], df.memoryUtilizationMin[i], df.memoryUtilizationMax[i])});
+        size_t num_rows = df.gpuId.size();
+        for (size_t i = 0; i < num_rows; ++i)
+        {
+            table.add_row(tabulate::Table::Row_t{
+                df.host[i],
+                std::to_string(df.gpuId[i]),
+                format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
+                format_percent(df.smUtilizationAvg[i], df.smUtilizationMin[i], df.smUtilizationMax[i]),
+                format_percent(df.memoryUtilizationAvg[i], df.memoryUtilizationMin[i], df.memoryUtilizationMax[i])});
+        }
+
+        // Enable multi-byte character support
+        table.format().multi_byte_characters(true);
+
+        // Format all rows
+        table.format()
+            .border_left("|")
+            .border_right("|")
+            .border_bottom("")
+            .border_top("")
+            .corner("");
+
+        // Format header row
+        table[0].format().border_top("-").corner("+");
+
+        // Format first row
+        table[1].format().border_top("-").corner_top_left("+").corner_top_right("+");
+
+        // Format last row
+        table[num_rows].format().border_bottom("-").corner_bottom_left("+").corner_bottom_right("+");
+
+        // Set a fixed width for each column and enable text wrapping
+        table[0][0].format().width(15); // Host
+        table[0][1].format().width(6);  // GPU ID
+        table[0][2].format().width(18); // Elapsed time
+        table[0][3].format().width(18); // Utilization
+        table[0][4].format().width(22); // Memory utilization
+
+        // Print the table
+        os << table << std::endl;
+
+        return os;
+    } catch (const std::exception &e) {
+        raise_error("Error: " + std::string(e.what()));
+        return os; // Suppress warning
     }
-
-    // Enable multi-byte character support
-    table.format().multi_byte_characters(true);
-
-    // Format all rows
-    table.format()
-        .border_left("|")
-        .border_right("|")
-        .border_bottom("")
-        .border_top("")
-        .corner("");
-
-    // Format header row
-    table[0].format().border_top("-").corner("+");
-
-    // Format first row
-    table[1].format().border_top("-").corner_top_left("+").corner_top_right("+");
-
-    // Format last row
-    table[num_rows].format().border_bottom("-").corner_bottom_left("+").corner_bottom_right("+");
-
-    // Set a fixed width for each column and enable text wrapping
-    table[0][0].format().width(15); // Host
-    table[0][1].format().width(6);  // GPU ID
-    table[0][2].format().width(18); // Elapsed time
-    table[0][3].format().width(18); // Utilization
-    table[0][4].format().width(22); // Memory utilization
-
-    // Print the table
-    os << table << std::endl;
-
-    return os;
 }
 
 DataFrame load_dataframe(const std::filesystem::path &target)

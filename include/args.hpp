@@ -79,6 +79,10 @@ public:
         parser({"-u", "--sampling_time"}, sampling_time) >> sampling_time;
         parser({"-t", "--max_time"}, max_time) >> max_time;
 
+        if(parser["--ignore-gpu-binding"]) {
+            ignore_gpu_binding = true;
+        }
+
         // This is required for the main command
         if(cmd.empty()) {
             return Status::MissingNonArguments;
@@ -107,6 +111,7 @@ public:
             << "    -o, --output <path>             Specify output directory (default: ./jobreport_<SLURM_JOB_ID>)" << std::endl
             << "    -u, --sampling_time <seconds>   Set the time between samples (default: automatically determined)" << std::endl
             << "    -t, --max_time <time>           Set the maximum monitoring time (format: DD-HH:MM:SS, default: 24:00:00)" << std::endl
+            << "    --ignore-gpu-binding            Ignore SLURM task to GPU binding flags like --gpus-per-task" << std::endl
             << "  print                             Print a job report" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
             << "    -o, --output <path>             Output path for the report file" << std::endl
@@ -135,6 +140,7 @@ public:
     int sampling_time = 0;                // -u, --sampling_time
     std::string max_time = "";            // -t, --max_time
     std::string cmd = "";                 // Non-arguments to run as a workload command
+    bool ignore_gpu_binding = false;      // --ignore-gpu-binding
 
 private:
     argh::parser parser;

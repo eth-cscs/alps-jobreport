@@ -17,7 +17,7 @@ class SlurmJob
 {
 public:
     SlurmJob() = default;
-    Status read_slurm_env();
+    Status read_slurm_env(bool ignore_gpu_binding);
 
     // Public variables
     std::string user = "unknown_user";
@@ -67,7 +67,7 @@ Status SlurmJob::read_env_var(T& rax, const std::string& var)
     return Status::Success;
 }
 
-Status SlurmJob::read_slurm_env()
+Status SlurmJob::read_slurm_env(bool ignore_gpu_binding)
 {
     // Read all the slurm environment variables
     if(read_env_var(job_id, "SLURM_JOB_ID") != Status::Success)
@@ -81,17 +81,20 @@ Status SlurmJob::read_slurm_env()
 
     root = (std::stoi(proc_id) == 0);
 
-    std::string step_gpus_str = "";
-    if(read_env_var(step_gpus_str, "SLURM_STEP_GPUS") != Status::Success) {
-        print_root("Warning: unable to read SLURM_GPUS_PER_TASK\n"
-                   "Consider passing --gpus-per-task <x> in your job script.");
-    } else {
-        // split the comma-separated string into a vector of unsigned integers
-        std::stringstream ss(step_gpus_str);
-        std::string gpuId;
-        while (std::getline(ss, gpuId, ','))
-        {
-            step_gpus.push_back(std::stoi(gpuId));
+    // Read the number of GPUs per task only if the user wants to use them
+    if(!ignore_gpu_binding){
+        std::string step_gpus_str = "";
+        if(read_env_var(step_gpus_str, "SLURM_STEP_GPUS") != Status::Success) {
+            print_root("Warning: unable to read SLURM_GPUS_PER_TASK\n"
+                    "Consider passing --gpus-per-task <x> in your job script.");
+        } else {
+            // split the comma-separated string into a vector of unsigned integers
+            std::stringstream ss(step_gpus_str);
+            std::string gpuId;
+            while (std::getline(ss, gpuId, ','))
+            {
+                step_gpus.push_back(std::stoi(gpuId));
+            }
         }
     }
     

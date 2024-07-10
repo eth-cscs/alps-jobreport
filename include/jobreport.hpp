@@ -25,15 +25,11 @@ public:
     JobReport(
         const std::string &path,
         int sampling_time,
-        const std::string &time_string)
-        : sampling_time(sampling_time * 1000000), split_output(split_output)
+        const std::string &time_string,
+        const bool ignore_gpu_binding
+        )
+        : sampling_time(sampling_time * 1000000), ignore_gpu_binding(ignore_gpu_binding)
     {
-        LOG("Initializing JobReport object." << std::endl
-                                             << "Output path: " << path << std::endl
-                                             << "Sampling time: " << sampling_time << std::endl
-                                             << "Time string: " << time_string << std::endl
-                                             << "Split output: " << split_output << std::endl);
-
         initialize(path, time_string);
     }
 
@@ -49,8 +45,8 @@ public:
 private:
     // Input arguments
     int sampling_time; // in microseconds
-    bool split_output = true;
     int max_runtime;
+    bool ignore_gpu_binding;
 
     // SLURM Variables
     SlurmJob job;
@@ -87,7 +83,7 @@ private:
 void JobReport::initialize(const std::string &path, const std::string &time_string)
 {
     // Need to know if the job is root or not before proceeding
-    job.read_slurm_env();
+    job.read_slurm_env(ignore_gpu_binding);
 
     print_root("ALPS Jobreport - v 0.1");
     print_root("Recording job performance statistics...");
