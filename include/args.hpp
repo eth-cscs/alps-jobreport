@@ -69,8 +69,8 @@ public:
             return Status::Help;
         }
 
-        // Check if -v or --version is present
-        if(parser[{"-v", "--version"}]){
+        // Check if --version is present
+        if(parser[{"--version"}]){
             version = true;
             return Status::Success;
         }
@@ -81,6 +81,14 @@ public:
 
         if(parser["--ignore-gpu-binding"]) {
             ignore_gpu_binding = true;
+        }
+
+        if(parser[{"-v", "--verbose"}]) {
+            verbose = true;
+        }
+
+        if(parser[{"-f", "--force"}]){
+            force = true;
         }
 
         // This is required for the main command
@@ -99,22 +107,24 @@ public:
 
     void help() {
         std::cout 
-            << "Usage: jobreport [-v -h] [subcommand] -- COMMAND" << std::endl
+            << "Usage: jobreport [-h --version] [subcommand] -- COMMAND" << std::endl
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                        Show this help message" << std::endl
-            << "  -v, --version                     Show version information" << std::endl
+            << "  --version                         Show version information" << std::endl
             << std::endl
             << "Subcommands:" << std::endl
             << "  monitor                           Monitor the performance metrics for a job. (Default)" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
+            << "    -v, --verbose                   Enable verbose output (default: false)" << std::endl
             << "    -o, --output <path>             Specify output directory (default: ./jobreport_<SLURM_JOB_ID>)" << std::endl
+            << "    -f, --force                     Force overwrite existing output files (default: false)" << std::endl
             << "    -u, --sampling_time <seconds>   Set the time between samples (default: automatically determined)" << std::endl
-            << "    -t, --max_time <time>           Set the maximum monitoring time (format: DD-HH:MM:SS, default: 24:00:00)" << std::endl
+            << "    -t, --max_time <time>           Set the maximum monitoring time (format: DD-HH:MM:SS, default: determined by SLURM)" << std::endl
             << "    --ignore-gpu-binding            Ignore SLURM task to GPU binding flags like --gpus-per-task" << std::endl
             << "  print                             Print a job report" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
-            << "    -o, --output <path>             Output path for the report file" << std::endl
+            << "    -o, --output <path>             Output path for the report file (default: ./)" << std::endl
             << "  container-hook                    Write enroot hook for jobreport" << std::endl
             << "    -h, --help                      Shows help message" << std::endl
             << "    -o, --output <path>             Output path for the enroot hook file" << std::endl
@@ -135,7 +145,9 @@ public:
     }
 
     // Public variables used to store the parsed arguments with default values
-    bool version = false;                 // -v, --version
+    bool version = false;                 // --version
+    bool verbose = false;                 // -v, --verbose
+    bool force = false;                   // -f, --force
     std::string output = "";              // -o, --output
     int sampling_time = 0;                // -u, --sampling_time
     std::string max_time = "";            // -t, --max_time
@@ -183,7 +195,7 @@ public:
             << std::endl
             << "Options:" << std::endl
             << "  -h, --help                     Show this help message" << std::endl
-            << "  -o, --output <path>            Output path for the report file" << std::endl
+            << "  -o, --output <path>            Output path for the report file (default: None)" << std::endl
             << std::endl
             << "Example:" << std::endl
             << "  jobreport print jobreport_1234" << std::endl

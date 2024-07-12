@@ -5,6 +5,8 @@
 #include <cstring>
 #include <iostream>
 #include <cstdlib>
+#include <csignal>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <algorithm>
 #include <filesystem>
@@ -26,9 +28,14 @@ public:
         const std::string &path,
         int sampling_time,
         const std::string &time_string,
-        const bool ignore_gpu_binding
+        const bool ignore_gpu_binding,
+        const bool verbose,
+        const bool force
         )
-        : sampling_time(sampling_time * 1000000), ignore_gpu_binding(ignore_gpu_binding)
+        : sampling_time(sampling_time * 1000000),
+          ignore_gpu_binding(ignore_gpu_binding),
+          verbose(verbose), 
+          force(force)
     {
         initialize(path, time_string);
     }
@@ -47,6 +54,8 @@ private:
     int sampling_time; // in microseconds
     int max_runtime;
     bool ignore_gpu_binding;
+    bool verbose;
+    bool force;
 
     // SLURM Variables
     SlurmJob job;
@@ -59,6 +68,7 @@ private:
 
     // Process variables
     std::filesystem::path output_path;
+    pid_t child_pid = -1;
 
     // Methods
     void initialize(const std::string &path, const std::string &time_string);
@@ -75,7 +85,7 @@ private:
     void compute_time_params(const std::string &time_string);
     void print_root(const std::string &msg)
     {
-        if (job.root)
+        if (verbose && job.root)
             std::cout << msg << std::endl;
     };
 };
@@ -83,7 +93,7 @@ private:
 void JobReport::initialize(const std::string &path, const std::string &time_string)
 {
     // Need to know if the job is root or not before proceeding
-    job.read_slurm_env(ignore_gpu_binding);
+    job.read_slurm_env(ignore_gpu_binding, verbose);
 
     print_root("ALPS Jobreport - v 0.1");
     print_root("Recording job performance statistics...");
@@ -108,7 +118,7 @@ void JobReport::set_output_path(const std::string &path)
     // Check if a file exists with the same name
     if (std::filesystem::exists(output_path) && !std::filesystem::is_directory(output_path))
     {
-        raise_error("Output path exists and is not a directory.");
+        raise_error("Error: output path exists and is not a directory.");
     }
 
     if (job.root)
@@ -132,8 +142,20 @@ void JobReport::set_output_path(const std::string &path)
     } catch (std::exception &e) {
         raise_error("Error creating output directory: " + std::string(e.what()));
     }
+    
     output_path = output_path / ("proc_" + job.proc_id + ".csv");
     output_path = std::filesystem::absolute(output_path);
+
+    // Check if the file already exists
+    if (std::filesystem::exists(output_path))
+    {
+        if(force){
+            std::filesystem::remove(output_path);
+        } else {
+            raise_error("Error: output file already exists: \"" + output_path.string() + "\"");
+        }
+    }
+
     LOG(output_path);
 }
 
@@ -215,11 +237,9 @@ void JobReport::initialize_gpu_group()
 {
     if (job.step_gpus.empty())
     {
-        if (job.root)
-        {
-            std::cout << "Unable to determine the number of GPUs per task." << std::endl
-                      << "Falling back to all GPUs on node." << std::endl;
-        }
+        print_root("Unable to determine the number of GPUs per task.\n"
+                   "Falling back to all GPUs on node.");
+
         group = (dcgmGpuGrp_t)DCGM_GROUP_ALL_GPUS;
     } else {
         dcgmReturn_t result = dcgmGroupCreate(dcgmHandle, DCGM_GROUP_EMPTY, job_name, &group);
@@ -288,27 +308,50 @@ void JobReport::stop()
     stop_job_stats();
 }
 
-void JobReport::run(const std::string &cmd)
-{
-    if (job.node_root)
-    {
+void JobReport::run(const std::string &cmd) {
+    // Start Job Stats
+    if (job.node_root) {
         initialize_dcgm_handle();
         initialize_gpu_group();
         start_job_stats();
     }
 
-    int result = std::system(cmd.c_str());
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_NOCLDWAIT;
+    sigaction(SIGCHLD, &sa, nullptr);
 
-    if (job.node_root)
-    {
-        stop_job_stats();
-        write_job_stats();
+    child_pid = fork();
+    if (child_pid == 0) {
+        // Child process
+        execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)nullptr);
+        // If execl returns, there was an error
+        raise_error("execl failed to execute command. Is /bin/sh available?");
+    } else if (child_pid > 0) {
+        // Parent process
+        int status;
+        waitpid(child_pid, &status, 0);
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            std::cerr << "Warning: workload \"" << cmd << "\" returned non-zero exit code: " << WEXITSTATUS(status) << std::endl;
+            // raise_error("Workload returned non-zero exit code.");
+        } else if (WIFSIGNALED(status)) {
+            std::cerr << "Warning: workload \"" << cmd << "\" was terminated by signal: " << WTERMSIG(status) << std::endl;
+            // raise_error("Workload was terminated by signal.");
+        }
+    } else {
+        // Fork failed
+        std::cerr << "Failed to fork process for command: " << cmd << std::endl;
     }
 
-    if (result != 0)
-    {
-        std::cerr << "Warning: workload \"" << cmd << "\" returned non-zero exit code: " << result << std::endl;
-        // raise_error("Workload returned non-zero exit code.");
+    // Reset signal handlers to default
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGCHLD, &sa, nullptr);
+
+    // Stop Job Stats
+    if (job.node_root) {
+        stop_job_stats();
+        write_job_stats();
     }
 }
 

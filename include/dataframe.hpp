@@ -30,6 +30,7 @@ struct DataFrameAvg
     long long endTime;
     int smUtilizationAvg;
     int memoryUtilizationAvg;
+    double maxAllocatedMemory;
 
     DataFrameAvg() = default;
 };
@@ -61,6 +62,7 @@ public:
     DFColumn<int> memoryUtilizationMin;
     DFColumn<int> memoryUtilizationMax;
     DFColumn<int> memoryUtilizationAvg;
+    DFColumn<double> maxAllocatedMemory;
 
     // Input/Output functions
     void dump(std::ofstream &os);
@@ -108,6 +110,7 @@ DataFrame::DataFrame(const dcgmJobInfo_t &jobInfo, const SlurmJob &job)
         memoryUtilizationMin.push_back(jobInfo.gpus[id].memoryUtilization.minValue);
         memoryUtilizationMax.push_back(jobInfo.gpus[id].memoryUtilization.maxValue);
         memoryUtilizationAvg.push_back(jobInfo.gpus[id].memoryUtilization.average);
+        maxAllocatedMemory.push_back(jobInfo.gpus[id].maxGpuMemoryUsed);
     }
 }
 
@@ -145,6 +148,7 @@ void DataFrame::sort_by_gpu_id()
     memoryUtilizationMin.permute(indices);
     memoryUtilizationMax.permute(indices);
     memoryUtilizationAvg.permute(indices);
+    maxAllocatedMemory.permute(indices);
 }
 
 DataFrameAvg DataFrame::average()
@@ -170,6 +174,7 @@ DataFrameAvg DataFrame::average()
     avg.energyConsumed = avg.powerUsageAvg/3600. * (avg.endTime - avg.startTime) / 1e6;
     avg.smUtilizationAvg = smUtilizationAvg.average();
     avg.memoryUtilizationAvg = memoryUtilizationAvg.average();
+    avg.maxAllocatedMemory = maxAllocatedMemory.max();
     return avg;
 }
 
@@ -184,7 +189,7 @@ void DataFrame::dump(std::ofstream &os)
        << "powerUsageMin,powerUsageMax,powerUsageAvg,"
        << "startTime,endTime,"
        << "smUtilizationMin,smUtilizationMax,smUtilizationAvg,"
-       << "memoryUtilizationMin,memoryUtilizationMax,memoryUtilizationAvg\n";
+       << "memoryUtilizationMin,memoryUtilizationMax,memoryUtilizationAvg,maxAllocatedMemory" << std::endl;
 
     // Disable scientific notation
     os << std::fixed << std::setprecision(6);
@@ -209,7 +214,8 @@ void DataFrame::dump(std::ofstream &os)
            << smUtilizationAvg[i] << ','
            << memoryUtilizationMin[i] << ',' 
            << memoryUtilizationMax[i] << ',' 
-           << memoryUtilizationAvg[i] << '\n';
+           << memoryUtilizationAvg[i] << ','
+           << maxAllocatedMemory[i] << std::endl;
     }
 }
 
@@ -217,28 +223,6 @@ void DataFrame::load(std::ifstream &is)
 {
     std::string line;
     std::getline(is, line); // Skip header line
-
-    // Clear existing data
-    // gpuId.clear();
-    // energyConsumed.clear();
-    // powerUsageMin.clear();
-    // powerUsageMax.clear();
-    // powerUsageAvg.clear();
-    // pcieRxBandwidthMin.clear();
-    // pcieRxBandwidthMax.clear();
-    // pcieRxBandwidthAvg.clear();
-    // pcieTxBandwidthMin.clear();
-    // pcieTxBandwidthMax.clear();
-    // pcieTxBandwidthAvg.clear();
-    // pcieReplays.clear();
-    // startTime.clear();
-    // endTime.clear();
-    // smUtilizationMin.clear();
-    // smUtilizationMax.clear();
-    // smUtilizationAvg.clear();
-    // memoryUtilizationMin.clear();
-    // memoryUtilizationMax.clear();
-    // memoryUtilizationAvg.clear();
 
     while (std::getline(is, line))
     {
@@ -299,6 +283,9 @@ void DataFrame::load(std::ifstream &is)
 
         std::getline(ss, value, ',');
         memoryUtilizationAvg.push_back(std::stoi(value));
+
+        std::getline(ss, value, ',');
+        maxAllocatedMemory.push_back(std::stod(value));
     }
 }
 

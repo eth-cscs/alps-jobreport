@@ -192,8 +192,12 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
                                             std::to_string(df.smUtilizationAvg) + " %"
                                             });
 
-        table.add_row(tabulate::Table::Row_t{"Average Memory Utilization",
+        table.add_row(tabulate::Table::Row_t{"Average Memory BW Utilization",
                                             std::to_string(df.memoryUtilizationAvg) + " %"
+                                            });
+
+        table.add_row(tabulate::Table::Row_t{"Maximum Memory Allocated",
+                                            format_bytes(df.maxAllocatedMemory)
                                             });
 
         table.format()
@@ -204,7 +208,7 @@ std::ostream &operator<<(std::ostream &os, const DataFrameAvg &df)
             .corner("+");
 
         // Set a fixed width for each header column and enable text wrapping
-        table[0].format().width(41);
+        table[0].format().width(54);
 
         os << table << std::endl;
 
@@ -226,7 +230,8 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
                     "GPU",
                     "Elapsed",
                     "SM Utilization %\n(avg/min/max)",
-                    "Memory Utilization %\n(avg/min/max)"});
+                    "Memory BW Utilization %\n(avg/min/max)",
+                    "Max Memory Allocated"});
 
         size_t num_rows = df.gpuId.size();
         for (size_t i = 0; i < num_rows; ++i)
@@ -236,7 +241,9 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
                 std::to_string(df.gpuId[i]),
                 format_elapsed((df.endTime[i] - df.startTime[i]) / 1000000),
                 format_percent(df.smUtilizationAvg[i], df.smUtilizationMin[i], df.smUtilizationMax[i]),
-                format_percent(df.memoryUtilizationAvg[i], df.memoryUtilizationMin[i], df.memoryUtilizationMax[i])});
+                format_percent(df.memoryUtilizationAvg[i], df.memoryUtilizationMin[i], df.memoryUtilizationMax[i]),
+                format_bytes(df.maxAllocatedMemory[i])
+                });
         }
 
         // Enable multi-byte character support
@@ -264,7 +271,8 @@ std::ostream &operator<<(std::ostream &os, const DataFrame &df)
         table[0][1].format().width(6);  // GPU ID
         table[0][2].format().width(18); // Elapsed time
         table[0][3].format().width(18); // Utilization
-        table[0][4].format().width(22); // Memory utilization
+        table[0][4].format().width(25); // Memory utilization
+        table[0][5].format().width(22); // Max memory allocated
 
         // Print the table
         os << table << std::endl;

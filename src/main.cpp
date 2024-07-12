@@ -17,7 +17,9 @@ void main_cmd(const MainCmdArgs &args)
         args.output,
         args.sampling_time,
         args.max_time,
-        args.ignore_gpu_binding
+        args.ignore_gpu_binding,
+        args.verbose,
+        args.force
         );
     jr.run(args.cmd);
 }

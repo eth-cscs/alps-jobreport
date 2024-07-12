@@ -17,7 +17,7 @@ class SlurmJob
 {
 public:
     SlurmJob() = default;
-    Status read_slurm_env(bool ignore_gpu_binding);
+    Status read_slurm_env(bool ignore_gpu_binding, bool verbose);
 
     // Public variables
     std::string user = "unknown_user";
@@ -67,7 +67,7 @@ Status SlurmJob::read_env_var(T& rax, const std::string& var)
     return Status::Success;
 }
 
-Status SlurmJob::read_slurm_env(bool ignore_gpu_binding)
+Status SlurmJob::read_slurm_env(bool ignore_gpu_binding, bool verbose)
 {
     // Read all the slurm environment variables
     if(read_env_var(job_id, "SLURM_JOB_ID") != Status::Success)
