@@ -62,7 +62,7 @@ public:
     DFColumn<int> memoryUtilizationMin;
     DFColumn<int> memoryUtilizationMax;
     DFColumn<int> memoryUtilizationAvg;
-    DFColumn<double> maxAllocatedMemory;
+    DFColumn<long long> maxAllocatedMemory;
 
     // Input/Output functions
     void dump(std::ofstream &os);
@@ -289,7 +289,7 @@ void DataFrame::load(std::ifstream &is)
         memoryUtilizationAvg.push_back(std::stoi(value));
 
         std::getline(ss, value, ',');
-        maxAllocatedMemory.push_back(std::stod(value));
+        maxAllocatedMemory.push_back(std::stoll(value));
     }
 }
 
