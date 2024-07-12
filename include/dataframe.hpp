@@ -172,8 +172,12 @@ DataFrameAvg DataFrame::average()
     avg.startTime = startTime.average();
     avg.endTime = endTime.average();
     avg.energyConsumed = avg.powerUsageAvg/3600. * (avg.endTime - avg.startTime) / 1e6;
-    avg.smUtilizationAvg = smUtilizationAvg.average();
-    avg.memoryUtilizationAvg = memoryUtilizationAvg.average();
+    
+    // Round up integer percentages
+    auto round_up = [](double x) { return static_cast<int>(x + 0.5); };
+    avg.smUtilizationAvg = round_up(smUtilizationAvg.average());
+    avg.memoryUtilizationAvg = round_up(memoryUtilizationAvg.average());
+    
     avg.maxAllocatedMemory = maxAllocatedMemory.max();
     return avg;
 }
